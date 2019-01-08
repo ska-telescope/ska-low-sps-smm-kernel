@@ -1,0 +1,14 @@
+sanitas_ska_mng_fpga-objs := register_map.o sanitas__ska_mng_fpga.o
+obj-$(CONFIG_SANITAS_SKA_MNG_FPGA) += sanitas_ska_mng_fpga.o
+sanitas_ska_mng_userreg-objs := register_map.o sanitas__ska_mng_userreg.o
+obj-$(CONFIG_SANITAS_SKA_MNG_USERREG) += sanitas_ska_mng_userreg.o
+sanitas_ska_mng_led-objs := register_map.o sanitas__ska_mng_led.o
+obj-$(CONFIG_SANITAS_SKA_MNG_LED) += sanitas_ska_mng_led.o
+sanitas_ska_mng_mcuregs-objs := register_map.o sanitas__ska_mng_mcuregs.o
+obj-$(CONFIG_SANITAS_SKA_MNG_MCUREGS) += sanitas_ska_mng_mcuregs.o
+sanitas_ska_mng_hkregs-objs := register_map.o sanitas__ska_mng_hkregs.o
+obj-$(CONFIG_SANITAS_SKA_MNG_HKREGS) += sanitas_ska_mng_hkregs.o
+sanitas_ska_mng_ethregs-objs := register_map.o sanitas__ska_mng_ethregs.o
+obj-$(CONFIG_SANITAS_SKA_MNG_ETHREGS) += sanitas_ska_mng_ethregs.o
+sanitas_ska_mng_mdio-objs := register_map.o sanitas__ska_mng_mdio.o
+obj-$(CONFIG_SANITAS_SKA_MNG_MDIO) += sanitas_ska_mng_mdio.o

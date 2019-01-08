@@ -1,0 +1,6 @@
+eclipse.preferences.version=1
+environment/project/cdt.managedbuild.toolchain.gnu.cross.base.729099918/PATH/delimiter=\:
+environment/project/cdt.managedbuild.toolchain.gnu.cross.base.729099918/PATH/operation=replace
+environment/project/cdt.managedbuild.toolchain.gnu.cross.base.729099918/PATH/value=/bin\:/usr/local/bin\:/usr/bin\:/usr/local/games\:/usr/games\:/home/davide/local/bin\:/media/Sanitas/i.MX6/fido/build/tmp/sysroots/x86_64-linux/usr/bin/arm-poky-linux-gnueabi/
+environment/project/cdt.managedbuild.toolchain.gnu.cross.base.729099918/append=true
+environment/project/cdt.managedbuild.toolchain.gnu.cross.base.729099918/appendContributed=true
