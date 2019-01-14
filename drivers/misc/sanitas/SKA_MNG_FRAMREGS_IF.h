@@ -1,0 +1,269 @@
+#ifndef SKA_MNG_FRAMREGS_REGISTERS_H_
+#define SKA_MNG_FRAMREGS_REGISTERS_H_
+
+#include "register_map.h"
+
+#undef REGISTER_REG_NAME
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "ADT7408 #1 Temperature Value"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x14, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(Adt1TempValue)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "ADT7408 #2 Temperature Value"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x2c, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(Adt2TempValue)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "LTC4281 Fault Log"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x40, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTCFaultLog)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "LTC4281 Energy 0 value"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x78, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTCEnergy0)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "LTC4281 Energy 1 value"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x7c, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTCEnergy1)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "LTC4281 Energy 2 value"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x80, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTCEnergy2)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "LTC4281 Energy 3 value"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x84, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTCEnergy3)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "LTC4281 Energy 4 value"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x88, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTCEnergy4)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "LTC4281 Energy 5 value"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x8c, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTCEnergy5)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "LTC4281 Time Count 0 value"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x90, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTCTimeCount0)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "LTC4281 Time Count 1 value"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x94, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTCTimeCount1)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "LTC4281 Time Count 2 value"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x98, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTCTimeCount2)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "LTC4281 Time Count 3 value"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x9c, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTCTimeCount3)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "LTC4281 Status 0"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0xA8, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTCStatus0)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "LTC4281 Status 1"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0xAC, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTCStatus1)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "LTC4281 VGPIO H"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0xB0, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTCVgpioH)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "LTC4281 VGPIO L"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0xB4, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTCVgpioL)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "LTC4281 VSOURCE L"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0xC8, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTCVsourceH)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "LTC4281 VSOURCE L"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0xCC, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTCVsourceL)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "LTC4281 VSENSE L"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0xE0, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTCVsenseH)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "LTC4281 VSENSE H"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0xE4, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTCVsenseL)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "LTC4281 POWER H"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0xF8, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTCPowerH)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "LTC4281 POWER L"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0xFC, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTCPowerL)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "LTC3676 MSKPG"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x158, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTC3676MSKPG)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "LTC3676 IRQSTAT"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x168, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTC3676Irq)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "LTC3676 PGSTATRT"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x170, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTC3676PgStatRt)
+
+
+
+
+
+
+
+
+
+#ifdef REGISTER_MAKE_REGISTERS
+#define REGISTER(__name__) register_ ## __name__
+static const Register * SKA_MNG_FRAMREGS_registers[] = {
+	//static const Registers registers = {
+	&(REGISTER(Adt1TempValue)),
+	&(REGISTER(Adt2TempValue)),
+	&(REGISTER(LTCFaultLog)),
+	&(REGISTER(LTCEnergy0)),
+	&(REGISTER(LTCEnergy1)),
+	&(REGISTER(LTCEnergy2)),
+	&(REGISTER(LTCEnergy3)),
+	&(REGISTER(LTCEnergy4)),
+	&(REGISTER(LTCEnergy5)),
+	&(REGISTER(LTCTimeCount0)),
+	&(REGISTER(LTCTimeCount1)),
+	&(REGISTER(LTCTimeCount2)),
+	&(REGISTER(LTCTimeCount3)),
+	&(REGISTER(LTCStatus0)),
+	&(REGISTER(LTCStatus1)),
+	&(REGISTER(LTCVgpioH)),
+	&(REGISTER(LTCVgpioL)),
+	&(REGISTER(LTCVsourceH)),
+	&(REGISTER(LTCVsourceL)),
+	&(REGISTER(LTCVsenseH)),
+	&(REGISTER(LTCVsenseL)),
+	&(REGISTER(LTCPowerH)),
+	&(REGISTER(LTCPowerL)),
+	&(REGISTER(LTC3676MSKPG)),
+	&(REGISTER(LTC3676Irq)),
+	&(REGISTER(LTC3676PgStatRt)),
+	NULL
+};
+#undef REGISTER
+#endif // ifdef REGISTER_MAKE_REGISTERS
+#ifdef REGISTER_MAKE_SYSFS
+#define REGISTER(__name__) register_dev_attr_ ## __name__.dev_attr.attr
+static struct attribute* SKA_MNG_FRAMREGS_attributes[] = {
+		&(REGISTER(Adt1TempValue)),
+		&(REGISTER(Adt2TempValue)),
+		&(REGISTER(LTCFaultLog)),
+		&(REGISTER(LTCEnergy0)),
+		&(REGISTER(LTCEnergy1)),
+		&(REGISTER(LTCEnergy2)),
+		&(REGISTER(LTCEnergy3)),
+		&(REGISTER(LTCEnergy4)),
+		&(REGISTER(LTCEnergy5)),
+		&(REGISTER(LTCTimeCount0)),
+		&(REGISTER(LTCTimeCount1)),
+		&(REGISTER(LTCTimeCount2)),
+		&(REGISTER(LTCTimeCount3)),
+		&(REGISTER(LTCStatus0)),
+		&(REGISTER(LTCStatus1)),
+		&(REGISTER(LTCVgpioH)),
+		&(REGISTER(LTCVgpioL)),
+		&(REGISTER(LTCVsourceH)),
+		&(REGISTER(LTCVsourceL)),
+		&(REGISTER(LTCVsenseH)),
+		&(REGISTER(LTCVsenseL)),
+		&(REGISTER(LTCPowerH)),
+		&(REGISTER(LTCPowerL)),
+		&(REGISTER(LTC3676MSKPG)),
+		&(REGISTER(LTC3676Irq)),
+		&(REGISTER(LTC3676PgStatRt)),
+		NULL
+};
+static const struct attribute_group SKA_MNG_FRAMREGS_sysfs_group = {
+	.name = "parameters",
+	.attrs = SKA_MNG_FRAMREGS_attributes,
+};
+#undef REGISTER
+#endif // ifdef REGISTER_MAKE_SYSFS
+#endif // ifndef SANITASEG_SKA_MNG_FRAM_REGISTERS_H_

@@ -46,6 +46,12 @@ config SANITAS_SKA_MNG_HKREGS
 	  This enables the Sanitas SKA Management House Keeping Registers driver. Individual devices
 	  drivers must be individually configured.
 
+config SANITAS_SKA_MNG_FRAMREGS
+	tristate "Sanitas SKA Management Fpga Ram  Registers driver"
+	depends on IMX_WEIM
+	help
+	  This enables the Sanitas SKA Management Fpga Ram Registers driver. Individual devices
+	  drivers must be individually configured.
 
 config SANITAS_SKA_MNG_MCUREGS
 	tristate "Sanitas SKA Management MCU Registers driver"

@@ -10,5 +10,7 @@ sanitas_ska_mng_hkregs-objs := register_map.o sanitas__ska_mng_hkregs.o
 obj-$(CONFIG_SANITAS_SKA_MNG_HKREGS) += sanitas_ska_mng_hkregs.o
 sanitas_ska_mng_ethregs-objs := register_map.o sanitas__ska_mng_ethregs.o
 obj-$(CONFIG_SANITAS_SKA_MNG_ETHREGS) += sanitas_ska_mng_ethregs.o
+sanitas_ska_mng_framregs-objs := register_map.o sanitas__ska_mng_framregs.o
+obj-$(CONFIG_SANITAS_SKA_MNG_FRAMREGS) += sanitas_ska_mng_framregs.o
 sanitas_ska_mng_mdio-objs := register_map.o sanitas__ska_mng_mdio.o
 obj-$(CONFIG_SANITAS_SKA_MNG_MDIO) += sanitas_ska_mng_mdio.o
