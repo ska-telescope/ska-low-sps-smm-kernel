@@ -102,6 +102,22 @@ DEFECATE(IRQBuck1)
 #include "REGISTER_MAKE.h"
 DEFECATE(HSwapCtrlPowerinAlert)
 
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "MCU Reset Status"
+#define REGISTER_MODE_WRITE
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x400, 0, 0, 1}
+#include "REGISTER_MAKE.h"
+DEFECATE(McuResetStatus)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "Hot Swap Controller Power In Alert (Active Low)"
+#define REGISTER_MODE_WRITE
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x404, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(McuPollingTime)
+
 
 
 
@@ -126,6 +142,8 @@ static const Register * SKA_MNG_HKREGS_registers[] = {
 	&(REGISTER(PowerGoodStepDown)),
 	&(REGISTER(IRQBuck1)),
 	&(REGISTER(HSwapCtrlPowerinAlert)),
+	&(REGISTER(McuResetStatus)),
+	&(REGISTER(McuPollingTime)),
 	NULL
 };
 #undef REGISTER
@@ -146,6 +164,8 @@ static struct attribute* SKA_MNG_HKREGS_attributes[] = {
 		&(REGISTER(PowerGoodStepDown)),
 		&(REGISTER(IRQBuck1)),
 		&(REGISTER(HSwapCtrlPowerinAlert)),
+		&(REGISTER(McuResetStatus)),
+		&(REGISTER(McuPollingTime)),
 	NULL
 };
 static const struct attribute_group SKA_MNG_HKREGS_sysfs_group = {

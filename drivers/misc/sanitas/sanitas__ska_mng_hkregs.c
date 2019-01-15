@@ -136,7 +136,7 @@ static const struct attribute_group SKA_MNG_HKREGS_sysfsControl_group = {
 };
 
 // ------------------------------------------------------------------------------------------------
-static int ska_mng_user_reg_probe(
+static int ska_mng_hk_reg_probe(
 		struct platform_device* pdev)
 {
 	struct SKA_MNG_HKREGS_deviceData *data;
@@ -189,7 +189,7 @@ out_error:
 	return ret;
 }
 
-static int ska_mng_user_reg_remove(
+static int ska_mng_hk_reg_remove(
 		struct platform_device* pdev)
 {
 
@@ -208,8 +208,8 @@ static const struct of_device_id SKA_MNG_HKREGS_id_table[] = {
 MODULE_DEVICE_TABLE(of, SKA_MNG_HKREGS_id_table);
 
 static struct platform_driver SKA_MNG_HKREGS_driver = {
-		.probe = ska_mng_user_reg_probe,
-		.remove = ska_mng_user_reg_remove,
+		.probe = ska_mng_hk_reg_probe,
+		.remove = ska_mng_hk_reg_remove,
 		.driver = {
 				.name = DRIVER_NAME,
 				.of_match_table = SKA_MNG_HKREGS_id_table,

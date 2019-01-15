@@ -210,7 +210,12 @@
     reg = <0x08000100 0x204>;
     status = "okay";     
     };
-    
+
+    skamngframregs: skamngframregs@08090000 {
+    compatible = "sanitas,ska-mng-framregs";
+    reg = <0x08090000 0x170>;
+    status = "okay";     
+    };    
     
     dsa@0 {
     	compatible = "marvell,dsa";
