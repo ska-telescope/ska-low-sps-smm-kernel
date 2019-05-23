@@ -1,38 +1,89 @@
-#ifndef SKA_MNG_USERREG_REGISTERS_H_
-#define SKA_MNG_USERREG_REGISTERS_H_
+#ifndef SKA_MNG_FPGA_I2C_REGISTERS_H_
+#define SKA_MNG_FPGA_I2C_REGISTERS_H_
 
 #include "register_map.h"
 
 #undef REGISTER_REG_NAME
 
 #include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION " R - Max 16B"
 #define REGISTER_MODE_READ
 #define REGISTER_MODE_WRITE
 #define REGISTER_CMDS {0x00, 0, 0, 32}
 #include "REGISTER_MAKE.h"
-DEFECATE(UserReg0)
+DEFECATE(twi_command_byte_len)
 
 #include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "number of byte to be write"
 #define REGISTER_MODE_READ
 #define REGISTER_MODE_WRITE
-#define REGISTER_CMDS {0x04, 0, 0, 32}
+#define REGISTER_CMDS {0x04, 24, 31, 8}
 #include "REGISTER_MAKE.h"
-DEFECATE(UserReg1)
+DEFECATE(twi_rbyte)
 
 #include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "number of byte to be read"
 #define REGISTER_MODE_READ
 #define REGISTER_MODE_WRITE
+#define REGISTER_CMDS {0x04, 16, 23, 8}
+#include "REGISTER_MAKE.h"
+DEFECATE(twi_wrbyte)
+
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "router address"
+#define REGISTER_MODE_READ
+#define REGISTER_MODE_WRITE
+#define REGISTER_CMDS {0x04, 8, 9, 2}
+#include "REGISTER_MAKE.h"
+DEFECATE(twi_router_add)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "IC address"
+#define REGISTER_MODE_READ
+#define REGISTER_MODE_WRITE
+#define REGISTER_CMDS {0x04, 0, 6, 7}
+#include "REGISTER_MAKE.h"
+DEFECATE(twi_ic_add)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "status register"
+#define REGISTER_MODE_READ
 #define REGISTER_CMDS {0x08, 0, 0, 32}
 #include "REGISTER_MAKE.h"
-DEFECATE(UserReg2)
+DEFECATE(twi_status)
 
 #include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "int register"
 #define REGISTER_MODE_READ
 #define REGISTER_MODE_WRITE
-#define REGISTER_CMDS {0x0c, 0, 0, 32}
+#define REGISTER_CMDS {0x0C, 0, 0, 32}
 #include "REGISTER_MAKE.h"
-DEFECATE(UserReg3)
+DEFECATE(twi_irq)
 
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "int en register"
+#define REGISTER_MODE_READ
+#define REGISTER_MODE_WRITE
+#define REGISTER_CMDS {0x10, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(twi_irq_en)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "Write Data Register (Add + data)"
+#define REGISTER_MODE_READ
+#define REGISTER_MODE_WRITE
+#define REGISTER_CMDS {0x100, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(twi_wrdata)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "Read data Register"
+#define REGISTER_MODE_READ
+#define REGISTER_MODE_WRITE
+#define REGISTER_CMDS {0x200, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(twi_rdata)
 
 
 
@@ -40,29 +91,41 @@ DEFECATE(UserReg3)
 
 #ifdef REGISTER_MAKE_REGISTERS
 #define REGISTER(__name__) register_ ## __name__
-static const Register * SKA_MNG_USERREG_registers[] = {
+static const Register * SKA_MNG_FPGA_I2C_registers[] = {
 	//static const Registers registers = {
-	&(REGISTER(UserReg0)),
-	&(REGISTER(UserReg1)),
-	&(REGISTER(UserReg2)),
-	&(REGISTER(UserReg3)),
+	&(REGISTER(twi_command_byte_len)),
+	&(REGISTER(twi_rbyte)),
+	&(REGISTER(twi_wrbyte)),
+	&(REGISTER(twi_router_add)),
+	&(REGISTER(twi_ic_add)),
+	&(REGISTER(twi_status)),
+	&(REGISTER(twi_irq)),
+	&(REGISTER(twi_irq_en)),	
+	&(REGISTER(twi_wrdata)),
+	&(REGISTER(twi_rdata)),
 	NULL
 };
 #undef REGISTER
 #endif // ifdef REGISTER_MAKE_REGISTERS
 #ifdef REGISTER_MAKE_SYSFS
 #define REGISTER(__name__) register_dev_attr_ ## __name__.dev_attr.attr
-static struct attribute* SKA_MNG_USERREG_attributes[] = {
-	&(REGISTER(UserReg0)),
-	&(REGISTER(UserReg1)),
-	&(REGISTER(UserReg2)),
-	&(REGISTER(UserReg3)),
+static struct attribute* SKA_MNG_FPGA_I2C_attributes[] = {
+	&(REGISTER(twi_command_byte_len)),
+	&(REGISTER(twi_rbyte)),
+	&(REGISTER(twi_wrbyte)),
+	&(REGISTER(twi_router_add)),
+	&(REGISTER(twi_ic_add)),
+	&(REGISTER(twi_status)),
+	&(REGISTER(twi_irq)),
+	&(REGISTER(twi_irq_en)),	
+	&(REGISTER(twi_wrdata)),
+	&(REGISTER(twi_rdata)),
 	NULL
 };
-static const struct attribute_group SKA_MNG_USERREG_sysfs_group = {
+static const struct attribute_group SKA_MNG_FPGA_I2C_sysfs_group = {
 	.name = "parameters",
 	.attrs = SKA_MNG_USERREG_attributes,
 };
 #undef REGISTER
 #endif // ifdef REGISTER_MAKE_SYSFS
-#endif // ifndef SANITASEG_SKA_MNG_USERREG_REGISTERS_H_
+#endif // ifndef SANITASEG_SKA_MNG_FPGA_I2C_REGISTERS_H_
