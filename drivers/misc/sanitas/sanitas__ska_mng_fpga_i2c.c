@@ -43,9 +43,9 @@
 #include <linux/stat.h>
 #include <linux/io.h>
 
-#define DRIVER_NAME "ska_mng_userreg"
+#define DRIVER_NAME "ska_mng_fpga_i2c"
 
-struct SKA_MNG_USERREG_deviceData
+struct SKA_MNG_FPGA_I2C_deviceData
 {
 	struct device *dev;
 	void __iomem* base;
@@ -65,13 +65,13 @@ static ssize_t storeRegister(struct device *dev, struct device_attribute *attr, 
 static ssize_t showRegister(struct device *dev, struct device_attribute *attr, char *buf);
 
 #include "register_map.h"
-#include "SKA_MNG_USERREG_IF.h"
+#include "SKA_MNG_FPGA_I2C_IF.h"
 
 static ssize_t showRegister(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	const Register* reg = to_register_dev_attr(attr)->reg;
 	struct platform_device *pdev = dev_get_platdata(dev);
-	struct SKA_MNG_USERREG_deviceData *data = dev_get_drvdata(dev);
+	struct SKA_MNG_FPGA_I2C_deviceData *data = dev_get_drvdata(dev);
 
 	u32 tmp;
 	Register_MemoryRead32(data->base, reg, &(tmp));
@@ -86,7 +86,7 @@ static ssize_t storeRegister(struct device *dev, struct device_attribute *attr, 
 
 	const Register* reg = to_register_dev_attr(attr)->reg;
 	struct platform_device *pdev = dev_get_platdata(dev);
-	struct SKA_MNG_USERREG_deviceData *data = dev_get_drvdata(dev);
+	struct SKA_MNG_FPGA_I2C_deviceData *data = dev_get_drvdata(dev);
 
 	//err = kstrtoint(buf, 0, &val);
 	kstrtol(buf, 0, &val);
@@ -108,7 +108,7 @@ static ssize_t listRegistersMap(
 		char *buf)
 {
 	const Register* reg = to_register_dev_attr(attr)->reg;
-	return Registers_List(SKA_MNG_USERREG_registers, buf, PAGE_SIZE);
+	return Registers_List(SKA_MNG_FPGA_I2C_registers, buf, PAGE_SIZE);
 }
 static DEVICE_ATTR(ListRegistersMap, S_IRUGO, listRegistersMap, 0);
 
@@ -118,28 +118,28 @@ static ssize_t dumpRegistersMap(
 		char *buf)
 {
 	struct platform_device *pdev = dev_get_platdata(dev);
-	struct SKA_MNG_USERREG_deviceData *data = dev_get_drvdata(dev);
+	struct SKA_MNG_FPGA_I2C_deviceData *data = dev_get_drvdata(dev);
 
-	return Registers_MemoryDump32(data->base, SKA_MNG_USERREG_registers, buf, PAGE_SIZE);
+	return Registers_MemoryDump32(data->base, SKA_MNG_FPGA_I2C_registers, buf, PAGE_SIZE);
 }
 static DEVICE_ATTR(DumpRegistersMap, S_IRUGO, dumpRegistersMap, 0);
 
-static struct attribute* SKA_MNG_USERREG_sysfsControl_attributes[] = {
+static struct attribute* SKA_MNG_FPGA_I2C_sysfsControl_attributes[] = {
 		&dev_attr_ListRegistersMap,
 		&dev_attr_DumpRegistersMap,
 		NULL
 };
 
-static const struct attribute_group SKA_MNG_USERREG_sysfsControl_group = {
+static const struct attribute_group SKA_MNG_FPGA_I2C_sysfsControl_group = {
 		.name = "control",
-		.attrs = SKA_MNG_USERREG_sysfsControl_attributes,
+		.attrs = SKA_MNG_FPGA_I2C_sysfsControl_attributes,
 };
 
 // ------------------------------------------------------------------------------------------------
-static int ska_mng_user_reg_probe(
+static int ska_mng_fpga_i2c_reg_probe(
 		struct platform_device* pdev)
 {
-	struct SKA_MNG_USERREG_deviceData *data;
+	struct SKA_MNG_FPGA_I2C_deviceData *data;
 	struct resource *res;
 	int ret = -EINVAL;
 	struct device_node* np = pdev->dev.of_node;
@@ -169,15 +169,15 @@ static int ska_mng_user_reg_probe(
 		goto out_error;
 	}
 
-	ret = sysfs_create_group(&pdev->dev.kobj, &SKA_MNG_USERREG_sysfs_group);
+	ret = sysfs_create_group(&pdev->dev.kobj, &SKA_MNG_FPGA_I2C_sysfs_group);
 	if (ret < 0) {
-		dev_err(&pdev->dev, "unable to create %s sysfs group\n", SKA_MNG_USERREG_sysfs_group.name);
+		dev_err(&pdev->dev, "unable to create %s sysfs group\n", SKA_MNG_FPGA_I2C_sysfs_group.name);
 		goto out_error;
 	}
 
-	ret = sysfs_create_group(&pdev->dev.kobj, &SKA_MNG_USERREG_sysfsControl_group);
+	ret = sysfs_create_group(&pdev->dev.kobj, &SKA_MNG_FPGA_I2C_sysfsControl_group);
 	if (ret < 0) {
-		dev_err(&pdev->dev, "unable to create %s sysfs group\n", SKA_MNG_USERREG_sysfsControl_group.name);
+		dev_err(&pdev->dev, "unable to create %s sysfs group\n", SKA_MNG_FPGA_I2C_sysfsControl_group.name);
 		return ret;
 	}
 
@@ -189,38 +189,38 @@ out_error:
 	return ret;
 }
 
-static int ska_mng_user_reg_remove(
+static int ska_mng_fpga_i2c_reg_remove(
 		struct platform_device* pdev)
 {
 
-	sysfs_remove_group(&pdev->dev.kobj, &SKA_MNG_USERREG_sysfs_group);
-	sysfs_remove_group(&pdev->dev.kobj, &SKA_MNG_USERREG_sysfsControl_group);
+	sysfs_remove_group(&pdev->dev.kobj, &SKA_MNG_FPGA_I2C_sysfs_group);
+	sysfs_remove_group(&pdev->dev.kobj, &SKA_MNG_FPGA_I2C_sysfsControl_group);
 
 	dev_info(&pdev->dev, "driver removed.\n");
 
 	return 0;
 }
 
-static const struct of_device_id SKA_MNG_USERREG_id_table[] = {
-		{ .compatible = "sanitas,ska-mng-userreg", },
+static const struct of_device_id SKA_MNG_FPGA_I2C_id_table[] = {
+		{ .compatible = "sanitas,ska-mng-fpga-i2c", },
 		{ }
 };
-MODULE_DEVICE_TABLE(of, SKA_MNG_USERREG_id_table);
+MODULE_DEVICE_TABLE(of, SKA_MNG_FPGA_I2C_id_table);
 
-static struct platform_driver SKA_MNG_USERREG_driver = {
-		.probe = ska_mng_user_reg_probe,
-		.remove = ska_mng_user_reg_remove,
+static struct platform_driver SKA_MNG_FPGA_I2C_driver = {
+		.probe = ska_mng_fpga_i2c_reg_probe,
+		.remove = ska_mng_fpga_i2c_reg_remove,
 		.driver = {
 				.name = DRIVER_NAME,
-				.of_match_table = SKA_MNG_USERREG_id_table,
+				.of_match_table = SKA_MNG_FPGA_I2C_id_table,
 				.owner = THIS_MODULE,
 		},
 };
 
-module_platform_driver(SKA_MNG_USERREG_driver);
+module_platform_driver(SKA_MNG_FPGA_I2C_driver);
 
 MODULE_AUTHOR("Cristian Albanese, Sanitas EG");
-MODULE_DESCRIPTION("Sanitas Ska Management User Register Driver");
+MODULE_DESCRIPTION("Sanitas Ska Management Fpga I2C Register Driver");
 MODULE_LICENSE("GPL");
 MODULE_VERSION("1.0");
 MODULE_ALIAS("platform:" DRIVER_NAME);
