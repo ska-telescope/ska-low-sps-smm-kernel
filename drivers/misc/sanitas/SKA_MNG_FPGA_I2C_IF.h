@@ -124,7 +124,7 @@ static struct attribute* SKA_MNG_FPGA_I2C_attributes[] = {
 };
 static const struct attribute_group SKA_MNG_FPGA_I2C_sysfs_group = {
 	.name = "parameters",
-	.attrs = SKA_MNG_USERREG_attributes,
+	.attrs = SKA_MNG_FPGA_I2C_attributes,
 };
 #undef REGISTER
 #endif // ifdef REGISTER_MAKE_SYSFS
