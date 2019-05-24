@@ -14,37 +14,12 @@
 DEFECATE(twi_command_byte_len)
 
 #include "REGISTER_RESET.h"
-#define REGISTER_DESCRIPTION "number of byte to be write"
+#define REGISTER_DESCRIPTION "command register: bytenum2read+bytenum2write+routeradd+ICadd"
 #define REGISTER_MODE_READ
 #define REGISTER_MODE_WRITE
-#define REGISTER_CMDS {0x04, 24, 31, 8}
+#define REGISTER_CMDS {0x04, 0, 0, 32}
 #include "REGISTER_MAKE.h"
-DEFECATE(twi_rbyte)
-
-#include "REGISTER_RESET.h"
-#define REGISTER_DESCRIPTION "number of byte to be read"
-#define REGISTER_MODE_READ
-#define REGISTER_MODE_WRITE
-#define REGISTER_CMDS {0x04, 16, 23, 8}
-#include "REGISTER_MAKE.h"
-DEFECATE(twi_wrbyte)
-
-
-#include "REGISTER_RESET.h"
-#define REGISTER_DESCRIPTION "router address"
-#define REGISTER_MODE_READ
-#define REGISTER_MODE_WRITE
-#define REGISTER_CMDS {0x04, 8, 9, 2}
-#include "REGISTER_MAKE.h"
-DEFECATE(twi_router_add)
-
-#include "REGISTER_RESET.h"
-#define REGISTER_DESCRIPTION "IC address"
-#define REGISTER_MODE_READ
-#define REGISTER_MODE_WRITE
-#define REGISTER_CMDS {0x04, 0, 6, 7}
-#include "REGISTER_MAKE.h"
-DEFECATE(twi_ic_add)
+DEFECATE(twi_command)
 
 #include "REGISTER_RESET.h"
 #define REGISTER_DESCRIPTION "status register"
@@ -94,10 +69,7 @@ DEFECATE(twi_rdata)
 static const Register * SKA_MNG_FPGA_I2C_registers[] = {
 	//static const Registers registers = {
 	&(REGISTER(twi_command_byte_len)),
-	&(REGISTER(twi_rbyte)),
-	&(REGISTER(twi_wrbyte)),
-	&(REGISTER(twi_router_add)),
-	&(REGISTER(twi_ic_add)),
+	&(REGISTER(twi_command)),
 	&(REGISTER(twi_status)),
 	&(REGISTER(twi_irq)),
 	&(REGISTER(twi_irq_en)),	
@@ -111,10 +83,7 @@ static const Register * SKA_MNG_FPGA_I2C_registers[] = {
 #define REGISTER(__name__) register_dev_attr_ ## __name__.dev_attr.attr
 static struct attribute* SKA_MNG_FPGA_I2C_attributes[] = {
 	&(REGISTER(twi_command_byte_len)),
-	&(REGISTER(twi_rbyte)),
-	&(REGISTER(twi_wrbyte)),
-	&(REGISTER(twi_router_add)),
-	&(REGISTER(twi_ic_add)),
+	&(REGISTER(twi_command)),
 	&(REGISTER(twi_status)),
 	&(REGISTER(twi_irq)),
 	&(REGISTER(twi_irq_en)),	
