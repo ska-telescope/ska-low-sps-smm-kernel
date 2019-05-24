@@ -215,7 +215,13 @@
     compatible = "sanitas,ska-mng-framregs";
     reg = <0x08090000 0x170>;
     status = "okay";     
-    };    
+    };
+    
+    skamngfpgai2c: skamngfpgai2c@08010000{
+    compatible = "sanitas,ska-mng-fpga-i2c";
+    reg = <0x08010000 0x200>;
+    status = "okay";     
+    };
     
     dsa@0 {
     	compatible = "marvell,dsa";
