@@ -222,7 +222,7 @@
     reg = <0x08010000 0x200>;
     status = "okay";     
     };
-    
+/*     
     dsa@0 {
     	compatible = "marvell,dsa";
     	#address-cells = <2>;
@@ -293,6 +293,7 @@
     };
 
 };
+*/
 
 &mxcfb1 { /* ##OK */
 	status = "okay";
@@ -335,7 +336,7 @@
 
 
 
-
+/*
 &fec {
 		compatible = "fsl,imx6q-fec";
 		pinctrl-names = "default";
@@ -350,7 +351,7 @@
 
 };
 
-/*
+
 &fec {
 	compatible = "fsl,imx6q-fec";
 	pinctrl-names = "default";
@@ -365,6 +366,13 @@
 };
 */
 
+
+&fec { /* ##OK */
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_enet_4>;
+	phy-mode = "rgmii";
+	status = "okay";
+};
 
 &hdmi_audio { /* ##OK */
 	status = "okay";
