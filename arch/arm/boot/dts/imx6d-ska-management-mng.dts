@@ -341,8 +341,8 @@
 		compatible = "fsl,imx6q-fec";
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_enet_4>;
-		phy-mode = "rgmii";
-		phy-reset-gpios = <>;/*phy-reset-gpios = <&gpio1 25 0>;*/
+		phy-mode = "rgmii"; 
+		phy-reset-gpios = <>;
 		fixed-link = <0 1 1000 0 0>;
 		status = "okay";
 		mdio: mdio@0 {
@@ -350,8 +350,8 @@
 		};
 
 };
-
-
+*/
+/*
 &fec {
 	compatible = "fsl,imx6q-fec";
 	pinctrl-names = "default";
