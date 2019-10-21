@@ -222,7 +222,7 @@
     reg = <0x08010000 0x200>;
     status = "okay";     
     };
-/*     
+     
     dsa@0 {
     	compatible = "marvell,dsa";
     	#address-cells = <2>;
@@ -236,7 +236,7 @@
     				reg = <0>;
     				label = "cpu";
     				ethernet = <&fec>;
-    				phy-mode = "rgmii-id";
+    				phy-mode = "rgmii";
     				fixed-link {
     					speed = <1000>;
     					full-duplex;
@@ -291,7 +291,7 @@
 
     		};
     };
-	*/
+	
 };
 
 
