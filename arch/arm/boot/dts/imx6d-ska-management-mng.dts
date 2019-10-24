@@ -222,7 +222,7 @@
     reg = <0x08010000 0x200>;
     status = "okay";     
     };
-     
+    /* 
     dsa@0 {
     	compatible = "marvell,dsa";
     	#address-cells = <2>;
@@ -290,7 +290,7 @@
 
 
     		};
-    };
+    };*/
 	
 };
 
@@ -371,6 +371,7 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_enet_4>;
 	phy-mode = "rgmii";
+	fixed-link=< 0 1 1000 0 0>;
 	status = "okay";
 };
 
