@@ -1822,9 +1822,9 @@ static int fec_enet_mdio_read(struct mii_bus *bus, int mii_id, int regnum)
 //
 //	return(int)(reg);
 //
-//	/* return value */
-//	//return FEC_MMFR_DATA(readl(fep->hwp + FEC_MII_DATA));
-//}
+	/* return value */
+	return FEC_MMFR_DATA(readl(fep->hwp + FEC_MII_DATA));
+}
 
 static int fec_enet_mdio_write(struct mii_bus *bus, int mii_id, int regnum,
 			   u16 value)
@@ -1865,8 +1865,8 @@ static int fec_enet_mdio_write(struct mii_bus *bus, int mii_id, int regnum,
 //	writew(reg,mdio_badd+0x4);  //write cfg1 reg
 //
 //	writew(value,mdio_badd+0x8);  //write value
-//	return 0;
-//}
+	return 0;
+}
 
 static int fec_enet_clk_enable(struct net_device *ndev, bool enable)
 {
