@@ -1774,97 +1774,99 @@ static void fec_enet_adjust_link(struct net_device *ndev)
 
 static int fec_enet_mdio_read(struct mii_bus *bus, int mii_id, int regnum)
 {
-//	struct fec_enet_private *fep = bus->priv;
-//	unsigned long time_left;
+	struct fec_enet_private *fep = bus->priv;
+	unsigned long time_left;
+
+	fep->mii_timeout = 0;
+	init_completion(&fep->mdio_done);
+
+	/* start a read op */
+	writel(FEC_MMFR_ST | FEC_MMFR_OP_READ |
+		FEC_MMFR_PA(mii_id) | FEC_MMFR_RA(regnum) |
+		FEC_MMFR_TA, fep->hwp + FEC_MII_DATA);
+
+	/* wait for end of transfer */
+	time_left = wait_for_completion_timeout(&fep->mdio_done,
+			usecs_to_jiffies(FEC_MII_TIMEOUT));
+	if (time_left == 0) {
+		fep->mii_timeout = 1;
+		netdev_err(fep->netdev, "MDIO read timeout\n");
+		return -ETIMEDOUT;
+	}
+
+//	void *mdio_badd=ioremap(0x08060000,32);  // get virtual address off mdioip base address
 //
-//	fep->mii_timeout = 0;
-//	init_completion(&fep->mdio_done);
+//	unsigned short reg;
 //
-//	/* start a read op */
-//	writel(FEC_MMFR_ST | FEC_MMFR_OP_READ |
-//		FEC_MMFR_PA(mii_id) | FEC_MMFR_RA(regnum) |
-//		FEC_MMFR_TA, fep->hwp + FEC_MII_DATA);
 //
-//	/* wait for end of transfer */
-//	time_left = wait_for_completion_timeout(&fep->mdio_done,
-//			usecs_to_jiffies(FEC_MII_TIMEOUT));
-//	if (time_left == 0) {
-//		fep->mii_timeout = 1;
-//		netdev_err(fep->netdev, "MDIO read timeout\n");
-//		return -ETIMEDOUT;
-//	}
-
-	void *mdio_badd=ioremap(0x08060000,32);  // get virtual address off mdioip base address
-
-	unsigned short reg;
-
-
-	//write cfg0 register:
-	//b15: 1, set clause 22
-	//b14: 1, preamble not required
-	//b13-b12: 0, reserved
-	//b11-b10: switch mux selector 1
-	//b9-b5: phy Address
-	//b4-b0: 0 (used only for  for Clauses 45 )
-
-	printk("Read MDIO phyid: %x, reg %x\n",mii_id,regnum);
-
-	reg=0xc100;
-	reg=reg |(unsigned short)mii_id;
-	writew(reg,mdio_badd);  //write cfg0 reg
-	reg=0;
-	reg=(unsigned short)regnum;
-	writew(reg,mdio_badd+0x4);  //write cfg1 reg
-
-
-	reg=readw(mdio_badd+0x8);
-	printk("Read value:%x\n",reg);
-
-	return(int)(reg);
-
-	/* return value */
-	//return FEC_MMFR_DATA(readl(fep->hwp + FEC_MII_DATA));
-}
+//	//write cfg0 register:
+//	//b15: 1, set clause 22
+//	//b14: 1, preamble not required
+//	//b13-b12: 0, reserved
+//	//b11-b10: switch mux selector 1
+//	//b9-b5: phy Address
+//	//b4-b0: 0 (used only for  for Clauses 45 )
+//
+//	printk("Read MDIO phyid: %x, reg %x\n",mii_id,regnum);
+//
+//	reg=0xc100;
+//	reg=reg |(unsigned short)mii_id;
+//	writew(reg,mdio_badd);  //write cfg0 reg
+//	reg=0;
+//	reg=(unsigned short)regnum;
+//	writew(reg,mdio_badd+0x4);  //write cfg1 reg
+//
+//
+//	reg=readw(mdio_badd+0x8);
+//	printk("Read value:%x\n",reg);
+//
+//	return(int)(reg);
+//
+//	/* return value */
+//	//return FEC_MMFR_DATA(readl(fep->hwp + FEC_MII_DATA));
+//}
 
 static int fec_enet_mdio_write(struct mii_bus *bus, int mii_id, int regnum,
 			   u16 value)
 {
-//	struct fec_enet_private *fep = bus->priv;
-//	unsigned long time_left;
+	struct fec_enet_private *fep = bus->priv;
+	unsigned long time_left;
+
+	fep->mii_timeout = 0;
+	init_completion(&fep->mdio_done);
+
+	/* start a write op */
+	writel(FEC_MMFR_ST | FEC_MMFR_OP_WRITE |
+		FEC_MMFR_PA(mii_id) | FEC_MMFR_RA(regnum) |
+		FEC_MMFR_TA | FEC_MMFR_DATA(value),
+		fep->hwp + FEC_MII_DATA);
+
+	/* wait for end of transfer */
+	time_left = wait_for_completion_timeout(&fep->mdio_done,
+			usecs_to_jiffies(FEC_MII_TIMEOUT));
+	if (time_left == 0) {
+		fep->mii_timeout = 1;
+		netdev_err(fep->netdev, "MDIO write timeout\n");
+		return -ETIMEDOUT;
+	}
+
+
+//	void *mdio_badd=ioremap(0x08060000,32);  // get virtual address off mdioip base address
 //
-//	fep->mii_timeout = 0;
-//	init_completion(&fep->mdio_done);
+//	unsigned short reg;
 //
-//	/* start a write op */
-//	writel(FEC_MMFR_ST | FEC_MMFR_OP_WRITE |
-//		FEC_MMFR_PA(mii_id) | FEC_MMFR_RA(regnum) |
-//		FEC_MMFR_TA | FEC_MMFR_DATA(value),
-//		fep->hwp + FEC_MII_DATA);
+//	printk("Write MDIO phyid: %x, reg %x\n",mii_id,regnum);
 //
-//	/* wait for end of transfer */
-//	time_left = wait_for_completion_timeout(&fep->mdio_done,
-//			usecs_to_jiffies(FEC_MII_TIMEOUT));
-//	if (time_left == 0) {
-//		fep->mii_timeout = 1;
-//		netdev_err(fep->netdev, "MDIO write timeout\n");
-//		return -ETIMEDOUT;
-//	}
-	void *mdio_badd=ioremap(0x08060000,32);  // get virtual address off mdioip base address
-
-	unsigned short reg;
-
-	printk("Write MDIO phyid: %x, reg %x\n",mii_id,regnum);
-
-	reg=0xc100;
-	reg=reg |(unsigned short)mii_id;
-	writew(reg,mdio_badd);  //write cfg0 reg
-	reg=0;
-	reg=(unsigned short)regnum;
-	writew(reg,mdio_badd+0x4);  //write cfg1 reg
-
-	writew(value,mdio_badd+0x8);  //write value
-	return 0;
-}
+//	reg=0xc100;
+//	reg=reg |(unsigned short)mii_id;
+//	writew(reg,mdio_badd);  //write cfg0 reg
+//	reg=0;
+//	reg=(unsigned short)regnum;
+//	writew(reg,mdio_badd+0x4);  //write cfg1 reg
+//
+//	writew(value,mdio_badd+0x8);  //write value
+//	return 0;
+//}
 
 static int fec_enet_clk_enable(struct net_device *ndev, bool enable)
 {
