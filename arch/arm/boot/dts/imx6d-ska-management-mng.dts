@@ -450,8 +450,6 @@
 	};
 
 
-};
-
 &hdmi_audio { /* ##OK */
 	status = "okay";
 };
