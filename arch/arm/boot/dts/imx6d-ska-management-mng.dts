@@ -368,7 +368,7 @@
 };
 */
 
-/*
+
 &fec { 
 	compatible = "fsl,imx6q-fec";
 	pinctrl-names = "default";
@@ -451,7 +451,7 @@
 
 
 };
-*/
+
 &hdmi_audio { /* ##OK */
 	status = "okay";
 };
