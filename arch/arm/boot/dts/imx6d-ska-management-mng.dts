@@ -357,24 +357,101 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_enet_4>;
 	clocks = <&clks IMX6QDL_CLK_ENET>,
-		 <&clks IMX6QDL_CLK_PCIE_REF_125M>,
-		 <&clks IMX6QDL_CLK_ENET_REF>;
+			 <&clks IMX6QDL_CLK_ENET>;
 	clock-names = "ipg", "ahb", "ptp";
 	phy-mode = "rgmii";
 	fixed-link=< 0 1 1000 0 0>;
 	status = "okay";
+	
+	
+	
 };
 */
 
-
-&fec { /* ##OK */
+/*
+&fec { 
+	compatible = "fsl,imx6q-fec";
+	pinctrl-names = "default";
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_enet_4>;
-	phy-mode = "rgmii";
-	fixed-link=< 0 1 1000 0 0>;
+	phy-mode = "rgmii-id";
+	#fixed-link=< 0 1 1000 0 0>;
 	status = "okay";
-};
 
+	mdio {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		status = "okay";
+
+		switch@0 {
+			compatible = "marvell,mv88e60xx";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0>;
+			dsa,member = <0 0>;
+
+    			port@0 {
+    				reg = <0>;
+    				label = "cpu";
+    				ethernet = <&fec>;
+    				phy-mode = "rgmii-id";
+    				fixed-link {
+    					speed = <1000>;
+    					full-duplex;
+    				 };
+    			};
+    			port@1 {
+    				reg = <1>;
+    				label = "lan1";
+    			};
+    			port@2 {
+    				reg = <2>;
+    				label = "lan2";
+    			};
+
+    			port@3 {
+    				reg = <3>;
+    				label = "lan3";
+    			};
+    		
+    			port@4 {
+    				reg = <4>;
+    				label = "lan4";
+    			};
+    			port@5 {
+    				reg = <5>;
+    				label = "lan5";
+    			};
+    			port@6 {
+    				reg = <6>;
+    				label = "lan6";
+    			};
+
+    			port@7 {
+    				reg = <7>;
+    				label = "lan7";
+    			};
+
+    			port@8 {
+    				reg = <8>;
+    				label = "lan8";
+    			};
+    		
+    			port@9 {
+    				reg = <9>;
+    				label = "Glan0";
+    			};
+    			port@10 {
+    				reg = <10>;
+    				label = "Glan1";
+    			};
+			};
+		};
+	};
+
+
+};
+*/
 &hdmi_audio { /* ##OK */
 	status = "okay";
 };
