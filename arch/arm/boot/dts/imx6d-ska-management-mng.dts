@@ -346,8 +346,7 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_enet_4>;
 		phy-mode = "rgmii"; 
-		clocks = <&clks IMX6QDL_CLK_ENET>,
-					 <&clks IMX6QDL_CLK_ENET>;
+		clocks = <&clks IMX6QDL_CLK_ENET>;
 		fixed-link = <0 1 10 0 0>;
 		status = "okay";
 };
@@ -523,6 +522,7 @@
 				
 				MX6QDL_PAD_DISP0_DAT22__ECSPI1_MISO 	0x80000000
 				*/
+				MX6QDL_PAD_GPIO_16__ENET_REF_CLK      0x80000000
 				
 				MX6QDL_PAD_ENET_MDIO__GPIO1_IO22		0x80000000 /* */
 				/* MX6QDL_PAD_ENET_REF_CLK__GPIO1_IO23 	0x80000000 */ /* */
