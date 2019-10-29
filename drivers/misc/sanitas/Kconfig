@@ -24,6 +24,13 @@ config SANITAS_SKA_MNG_LED
 	  This enables the Sanitas SKA Management Leds driver. Individual devices
 	  drivers must be individually configured.
 
+config SANITAS_SKA_MNG_ONEWIREREGS
+	tristate "Sanitas SKA Management OneWire Register driver"
+	depends on IMX_WEIM
+	help
+	  This enables the Sanitas SKA Management Onewire driver. Individual devices
+	  drivers must be individually configured.
+
 config SANITAS_SKA_MNG_MDIO
 	tristate "Sanitas SKA Management MDIO driver"
 	depends on IMX_WEIM
