@@ -346,7 +346,9 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_enet_4>;
 		phy-mode = "rgmii"; 
-		fixed-link = <0 1 1000 0 0>;
+		clocks = <&clks IMX6QDL_CLK_ENET>,
+					 <&clks IMX6QDL_CLK_ENET>;
+		fixed-link = <0 1 10 0 0>;
 		status = "okay";
 };
 
