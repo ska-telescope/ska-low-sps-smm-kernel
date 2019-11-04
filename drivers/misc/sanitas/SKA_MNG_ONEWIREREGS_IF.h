@@ -10,28 +10,50 @@
 #define REGISTER_MODE_WRITE
 #define REGISTER_CMDS {0x00, 0, 0, 32}
 #include "REGISTER_MAKE.h"
-DEFECATE(Ctrl_RNW)
+DEFECATE(Commnad1WM)
 
 #include "REGISTER_RESET.h"
 #define REGISTER_MODE_READ
 #define REGISTER_MODE_WRITE
 #define REGISTER_CMDS {0x04, 0, 0, 32}
 #include "REGISTER_MAKE.h"
-DEFECATE(Ctrl_TxData)
+DEFECATE(Data1WM)
 
 #include "REGISTER_RESET.h"
 #define REGISTER_MODE_READ
 #define REGISTER_MODE_WRITE
 #define REGISTER_CMDS {0x08, 0, 0, 32}
 #include "REGISTER_MAKE.h"
-DEFECATE(Ctrl_RxData)
+DEFECATE(Int1WM)
 
 #include "REGISTER_RESET.h"
 #define REGISTER_MODE_READ
 #define REGISTER_MODE_WRITE
 #define REGISTER_CMDS {0x0c, 0, 0, 32}
 #include "REGISTER_MAKE.h"
-DEFECATE(Ctrl_Status)
+DEFECATE(IntEn1WM)
+
+
+#include "REGISTER_RESET.h"
+#define REGISTER_MODE_READ
+#define REGISTER_MODE_WRITE
+#define REGISTER_CMDS {0x10, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(Clock1WM)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_MODE_READ
+#define REGISTER_MODE_WRITE
+#define REGISTER_CMDS {0x14, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(Ctrl1WM)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_MODE_READ
+#define REGISTER_MODE_WRITE
+#define REGISTER_CMDS {0x18, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(Mux1WM)
 
 
 
@@ -40,10 +62,13 @@ DEFECATE(Ctrl_Status)
 #define REGISTER(__name__) register_ ## __name__
 static const Register * SKA_MNG_ONEWIRE_registers[] = {
 	//static const Registers registers = {
-	&(REGISTER(Ctrl_RNW)),
-	&(REGISTER(Ctrl_TxData)),
-	&(REGISTER(Ctrl_RxData)),
-	&(REGISTER(Ctrl_Status)),
+	&(REGISTER(Commnad1WM)),
+	&(REGISTER(Data1WM)),
+	&(REGISTER(Int1WM)),
+	&(REGISTER(IntEn1WM)),
+	&(REGISTER(Clock1WM)),
+	&(REGISTER(Ctrl1WM)),
+	&(REGISTER(Mux1WM)),
 	NULL
 };
 #undef REGISTER
@@ -51,10 +76,13 @@ static const Register * SKA_MNG_ONEWIRE_registers[] = {
 #ifdef REGISTER_MAKE_SYSFS
 #define REGISTER(__name__) register_dev_attr_ ## __name__.dev_attr.attr
 static struct attribute* SKA_MNG_ONEWIRE_attributes[] = {
-		&(REGISTER(Ctrl_RNW)),
-		&(REGISTER(Ctrl_TxData)),
-		&(REGISTER(Ctrl_RxData)),
-		&(REGISTER(Ctrl_Status)),
+		&(REGISTER(Commnad1WM)),
+		&(REGISTER(Data1WM)),
+		&(REGISTER(Int1WM)),
+		&(REGISTER(IntEn1WM)),
+		&(REGISTER(Clock1WM)),
+		&(REGISTER(Ctrl1WM)),
+		&(REGISTER(Mux1WM)),
 	NULL
 };
 static const struct attribute_group SKA_MNG_ONEWIRE_sysfs_group = {
