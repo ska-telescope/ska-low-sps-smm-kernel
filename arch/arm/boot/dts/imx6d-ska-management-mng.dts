@@ -98,6 +98,7 @@
 		};
 	};
 	
+	
 	/*
 	sound {
 		compatible = "fsl,imx6q-inventami-sgtl5000", "fsl,imx-audio-sgtl5000";
@@ -296,8 +297,22 @@
 
     		};
     };*/
+    onewire {
+	    compatible = "w1-gpio";
+	    gpios = <&gpio1 7 GPIO_ACTIVE_HIGH>;
+	    linux,open-drain;
+	    pinctrl-names = "default";
+	    pinctrl-0 = <&pinctrl_onewire>;
+	    status = "okay";
+    };
+    pinctrl_onewire: onewire {
+    	fsl,pins = <MX6QDL_PAD_GPIO_7__GPIO1_IO07 0x4001b8b1>;
+    };
 	
 };
+
+
+
 
 
 &mxcfb1 { /* ##OK */
