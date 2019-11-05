@@ -193,8 +193,8 @@
     };
 
     skamngonewireregs: skamngmonewireregs@080B0000 {
-    compatible = "sanitas,ska-mng-onewireregs";
-    reg = <0x080B0000 0x10>;
+    compatible = "ds1wm";
+    reg = <0x080B0000 0x18>;
     status = "okay";     
     };
 

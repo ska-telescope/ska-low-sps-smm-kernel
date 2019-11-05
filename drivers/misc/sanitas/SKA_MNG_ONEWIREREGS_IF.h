@@ -10,7 +10,7 @@
 #define REGISTER_MODE_WRITE
 #define REGISTER_CMDS {0x00, 0, 0, 32}
 #include "REGISTER_MAKE.h"
-DEFECATE(Commnad1WM)
+DEFECATE(Command1WM)
 
 #include "REGISTER_RESET.h"
 #define REGISTER_MODE_READ
@@ -62,7 +62,7 @@ DEFECATE(Mux1WM)
 #define REGISTER(__name__) register_ ## __name__
 static const Register * SKA_MNG_ONEWIRE_registers[] = {
 	//static const Registers registers = {
-	&(REGISTER(Commnad1WM)),
+	&(REGISTER(Command1WM)),
 	&(REGISTER(Data1WM)),
 	&(REGISTER(Int1WM)),
 	&(REGISTER(IntEn1WM)),
@@ -76,7 +76,7 @@ static const Register * SKA_MNG_ONEWIRE_registers[] = {
 #ifdef REGISTER_MAKE_SYSFS
 #define REGISTER(__name__) register_dev_attr_ ## __name__.dev_attr.attr
 static struct attribute* SKA_MNG_ONEWIRE_attributes[] = {
-		&(REGISTER(Commnad1WM)),
+		&(REGISTER(Command1WM)),
 		&(REGISTER(Data1WM)),
 		&(REGISTER(Int1WM)),
 		&(REGISTER(IntEn1WM)),
