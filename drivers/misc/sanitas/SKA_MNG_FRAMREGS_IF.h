@@ -190,8 +190,148 @@ DEFECATE(LTC3676PgStatRt)
 
 
 
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "PSU0_Vout"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x324, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(PSU0_Vout)
 
 
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "PSU0_Iout"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x328, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(PSU0_Iout)
+
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "PSU0_Vin"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x32C, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(PSU0_Vin)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "PSU0_Iin"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x330, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(PSU0_Iin)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "PSU0_Status_Vout"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x334, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(PSU0_Status_Vout)
+
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "PSU0_Status_Iout"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x338, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(PSU0_Status_Iout)
+
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "PSU0_Fan_Speed"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x33C, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(PSU0_Fan_Speed)
+
+
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "PSU1_Vout"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x340, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(PSU1_Vout)
+
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "PSU1_Iout"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x344, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(PSU1_Iout)
+
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "PSU1_Vin"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x348, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(PSU1_Vin)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "PSU1_Iin"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x34C, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(PSU1_Iin)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "PSU1_Status_Vout"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x350, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(PSU1_Status_Vout)
+
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "PSU1_Status_Iout"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x354, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(PSU1_Status_Iout)
+
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "PSU1_Fan_Speed"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x358, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(PSU1_Fan_Speed)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "Fan PWM"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x35C, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(FAN_PWM)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "Fan1 TACH"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x360, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(FAN1_TACH)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "Fan2 TACH"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x364, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(FAN2_TACH)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "Fan3 TACH"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x368, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(FAN3_TACH)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "Fan4 TACH"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x36C, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(FAN4_TACH)
 
 
 
@@ -225,6 +365,25 @@ static const Register * SKA_MNG_FRAMREGS_registers[] = {
 	&(REGISTER(LTC3676MSKPG)),
 	&(REGISTER(LTC3676Irq)),
 	&(REGISTER(LTC3676PgStatRt)),
+	&(REGISTER(PSU0_Vout)),
+	&(REGISTER(PSU0_Iout)),
+	&(REGISTER(PSU0_Vin)),
+	&(REGISTER(PSU0_Iin)),
+	&(REGISTER(PSU0_Status_Vout)),
+	&(REGISTER(PSU0_Status_Iout)),
+	&(REGISTER(PSU0_Fan_Speed)),
+	&(REGISTER(PSU1_Vout)),
+	&(REGISTER(PSU1_Iout)),
+	&(REGISTER(PSU1_Vin)),
+	&(REGISTER(PSU1_Iin)),
+	&(REGISTER(PSU1_Status_Vout)),
+	&(REGISTER(PSU1_Status_Iout)),
+	&(REGISTER(PSU1_Fan_Speed)),
+	&(REGISTER(FAN_PWM)),
+	&(REGISTER(FAN1_TACH)),
+	&(REGISTER(FAN2_TACH)),
+	&(REGISTER(FAN3_TACH)),
+	&(REGISTER(FAN4_TACH)),
 	NULL
 };
 #undef REGISTER
@@ -258,6 +417,25 @@ static struct attribute* SKA_MNG_FRAMREGS_attributes[] = {
 		&(REGISTER(LTC3676MSKPG)),
 		&(REGISTER(LTC3676Irq)),
 		&(REGISTER(LTC3676PgStatRt)),
+		&(REGISTER(PSU0_Vout)),
+		&(REGISTER(PSU0_Iout)),
+		&(REGISTER(PSU0_Vin)),
+		&(REGISTER(PSU0_Iin)),
+		&(REGISTER(PSU0_Status_Vout)),
+		&(REGISTER(PSU0_Status_Iout)),
+		&(REGISTER(PSU0_Fan_Speed)),
+		&(REGISTER(PSU1_Vout)),
+		&(REGISTER(PSU1_Iout)),
+		&(REGISTER(PSU1_Vin)),
+		&(REGISTER(PSU1_Iin)),
+		&(REGISTER(PSU1_Status_Vout)),
+		&(REGISTER(PSU1_Status_Iout)),
+		&(REGISTER(PSU1_Fan_Speed)),
+		&(REGISTER(FAN_PWM)),
+		&(REGISTER(FAN1_TACH)),
+		&(REGISTER(FAN2_TACH)),
+		&(REGISTER(FAN3_TACH)),
+		&(REGISTER(FAN4_TACH)),
 		NULL
 };
 static const struct attribute_group SKA_MNG_FRAMREGS_sysfs_group = {
