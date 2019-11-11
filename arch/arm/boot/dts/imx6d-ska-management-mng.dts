@@ -194,7 +194,7 @@
     };
 
     skamngonewireregs: skamngmonewireregs@080B0000 {
-    compatible = "ds1wm";
+    compatible = "ska-mng-onewireregs";
     reg = <0x080B0000 0x18>;
     status = "okay";     
     };
