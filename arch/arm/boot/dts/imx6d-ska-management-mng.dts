@@ -194,7 +194,7 @@
     };
 
     skamngonewireregs: skamngmonewireregs@080B0000 {
-    compatible = "ska-mng-onewireregs";
+    compatible = "sanitas,ska-mng-onewireregs";
     reg = <0x080B0000 0x18>;
     status = "okay";     
     };
@@ -297,6 +297,7 @@
 
     		};
     };*/
+    /*
     onewire {
 	    compatible = "w1-gpio";
 	    gpios = <&gpio1 7 GPIO_ACTIVE_HIGH>;
@@ -308,6 +309,7 @@
     pinctrl_onewire: onewire {
     	fsl,pins = <MX6QDL_PAD_GPIO_7__GPIO1_IO07 0x4001b8b1>;
     };
+    */
 	
 };
 
