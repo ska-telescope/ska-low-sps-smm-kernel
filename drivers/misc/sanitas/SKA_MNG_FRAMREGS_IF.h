@@ -188,6 +188,485 @@ DEFECATE(LTC3676Irq)
 DEFECATE(LTC3676PgStatRt)
 
 
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "ADT7408_B_1_capability"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x174, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(ADT7408_B1_cap)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "fram_ADT7408_B_1_configuration"
+#define REGISTER_MODE_READ
+#define REGISTER_MODE_WRITE
+#define REGISTER_CMDS {0x178, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(ADT7408_B1_cfg)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "fram_ADT7408_B_1_alarm_temp_up_bound_trip"
+#define REGISTER_MODE_READ
+#define REGISTER_MODE_WRITE
+#define REGISTER_CMDS {0x17C, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(ADT7408_B1_alm_temp_up)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "fram_ADT7408_B_1_alarm_temp_low_bound_trip"
+#define REGISTER_MODE_READ
+#define REGISTER_MODE_WRITE
+#define REGISTER_CMDS {0x180, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(ADT7408_B1_alm_temp_low)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "fram_ADT7408_B_1_critical_temp_trip"
+#define REGISTER_MODE_READ
+#define REGISTER_MODE_WRITE
+#define REGISTER_CMDS {0x184, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(ADT7408_B1_crit_temp)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "fram_ADT7408_B_1_temp_val"
+#define REGISTER_MODE_READ
+#define REGISTER_MODE_WRITE
+#define REGISTER_CMDS {0x188, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(ADT7408_B1_temp)
+
+
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "ADT7408_B_2_capability"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x18C, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(ADT7408_B2_cap)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "fram_ADT7408_B_2_configuration"
+#define REGISTER_MODE_READ
+#define REGISTER_MODE_WRITE
+#define REGISTER_CMDS {0x190, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(ADT7408_B2_cfg)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "fram_ADT7408_B_2_alarm_temp_up_bound_trip"
+#define REGISTER_MODE_READ
+#define REGISTER_MODE_WRITE
+#define REGISTER_CMDS {0x194, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(ADT7408_B2_alm_temp_up)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "fram_ADT7408_B_2_alarm_temp_low_bound_trip"
+#define REGISTER_MODE_READ
+#define REGISTER_MODE_WRITE
+#define REGISTER_CMDS {0x198, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(ADT7408_B2_alm_temp_low)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "fram_ADT7408_B_2_critical_temp_trip"
+#define REGISTER_MODE_READ
+#define REGISTER_MODE_WRITE
+#define REGISTER_CMDS {0x19C, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(ADT7408_B2_crit_temp)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "fram_ADT7408_B_2_temp_val"
+#define REGISTER_MODE_READ
+#define REGISTER_MODE_WRITE
+#define REGISTER_CMDS {0x200, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(ADT7408_B2_temp)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "fram_LTC4281_B_1_control"
+#define REGISTER_MODE_READ
+#define REGISTER_MODE_WRITE
+#define REGISTER_CMDS {0x204, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTC4281_B1_control)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "fram_LTC4281_B_1_alert"
+#define REGISTER_MODE_READ
+#define REGISTER_MODE_WRITE
+#define REGISTER_CMDS {0x208, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTC4281_B1_alert)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "fram_LTC4281_B_1_fault_log"
+#define REGISTER_MODE_READ
+#define REGISTER_MODE_WRITE
+#define REGISTER_CMDS {0x20C, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTC4281_B1_fault_log)
+
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "fram_LTC4281_B_1_ilim_adj"
+#define REGISTER_MODE_READ
+#define REGISTER_MODE_WRITE
+#define REGISTER_CMDS {0x210, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTC4281_B1_ilim_adj)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "fram_LTC4281_B_1_Vsource"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x214, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTC4281_B1_Vsource)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "fram_LTC4281_B_1_power"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x218, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTC4281_B1_power)
+
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "fram_LTC4281_B_2_control"
+#define REGISTER_MODE_READ
+#define REGISTER_MODE_WRITE
+#define REGISTER_CMDS {0x21C, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTC4281_B2_control)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "fram_LTC4281_B_2_alert"
+#define REGISTER_MODE_READ
+#define REGISTER_MODE_WRITE
+#define REGISTER_CMDS {0x220, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTC4281_B2_alert)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "fram_LTC4281_B_2_fault_log"
+#define REGISTER_MODE_READ
+#define REGISTER_MODE_WRITE
+#define REGISTER_CMDS {0x224, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTC4281_B2_fault_log)
+
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "fram_LTC4281_B_2_ilim_adj"
+#define REGISTER_MODE_READ
+#define REGISTER_MODE_WRITE
+#define REGISTER_CMDS {0x228, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTC4281_B2_ilim_adj)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "fram_LTC4281_B_2_Vsource"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x22C, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTC4281_B2_Vsource)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "fram_LTC4281_B_2_power"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x230, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTC4281_B2_power)
+
+
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "fram_LTC4281_B_3_control"
+#define REGISTER_MODE_READ
+#define REGISTER_MODE_WRITE
+#define REGISTER_CMDS {0x234, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTC4281_B3_control)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "fram_LTC4281_B_3_alert"
+#define REGISTER_MODE_READ
+#define REGISTER_MODE_WRITE
+#define REGISTER_CMDS {0x238, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTC4281_B3_alert)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "fram_LTC4281_B_3_fault_log"
+#define REGISTER_MODE_READ
+#define REGISTER_MODE_WRITE
+#define REGISTER_CMDS {0x23C, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTC4281_B3_fault_log)
+
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "fram_LTC4281_B_3_ilim_adj"
+#define REGISTER_MODE_READ
+#define REGISTER_MODE_WRITE
+#define REGISTER_CMDS {0x240, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTC4281_B3_ilim_adj)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "fram_LTC4281_B_3_Vsource"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x244, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTC4281_B3_Vsource)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "fram_LTC4281_B_3_power"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x248, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTC4281_B3_power)
+
+
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "fram_LTC4281_B_4_control"
+#define REGISTER_MODE_READ
+#define REGISTER_MODE_WRITE
+#define REGISTER_CMDS {0x24C, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTC4281_B4_control)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "fram_LTC4281_B_4_alert"
+#define REGISTER_MODE_READ
+#define REGISTER_MODE_WRITE
+#define REGISTER_CMDS {0x250, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTC4281_B4_alert)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "fram_LTC4281_B_4_fault_log"
+#define REGISTER_MODE_READ
+#define REGISTER_MODE_WRITE
+#define REGISTER_CMDS {0x254, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTC4281_B4_fault_log)
+
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "fram_LTC4281_B_4_ilim_adj"
+#define REGISTER_MODE_READ
+#define REGISTER_MODE_WRITE
+#define REGISTER_CMDS {0x258, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTC4281_B4_ilim_adj)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "fram_LTC4281_B_4_Vsource"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x25C, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTC4281_B4_Vsource)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "fram_LTC4281_B_4_power"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x260, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTC4281_B4_power)
+
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "fram_LTC4281_B_5_control"
+#define REGISTER_MODE_READ
+#define REGISTER_MODE_WRITE
+#define REGISTER_CMDS {0x264, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTC4281_B5_control)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "fram_LTC4281_B_5_alert"
+#define REGISTER_MODE_READ
+#define REGISTER_MODE_WRITE
+#define REGISTER_CMDS {0x268, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTC4281_B5_alert)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "fram_LTC4281_B_5_fault_log"
+#define REGISTER_MODE_READ
+#define REGISTER_MODE_WRITE
+#define REGISTER_CMDS {0x26c, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTC4281_B5_fault_log)
+
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "fram_LTC4281_B_5_ilim_adj"
+#define REGISTER_MODE_READ
+#define REGISTER_MODE_WRITE
+#define REGISTER_CMDS {0x270, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTC4281_B5_ilim_adj)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "fram_LTC4281_B_5_Vsource"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x274, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTC4281_B5_Vsource)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "fram_LTC4281_B_5_power"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x278, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTC4281_B5_power)
+
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "fram_LTC4281_B_6_control"
+#define REGISTER_MODE_READ
+#define REGISTER_MODE_WRITE
+#define REGISTER_CMDS {0x27C, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTC4281_B6_control)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "fram_LTC4281_B_6_alert"
+#define REGISTER_MODE_READ
+#define REGISTER_MODE_WRITE
+#define REGISTER_CMDS {0x280, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTC4281_B6_alert)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "fram_LTC4281_B_6_fault_log"
+#define REGISTER_MODE_READ
+#define REGISTER_MODE_WRITE
+#define REGISTER_CMDS {0x284, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTC4281_B6_fault_log)
+
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "fram_LTC4281_B_6_ilim_adj"
+#define REGISTER_MODE_READ
+#define REGISTER_MODE_WRITE
+#define REGISTER_CMDS {0x288, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTC4281_B6_ilim_adj)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "fram_LTC4281_B_6_Vsource"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x28C, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTC4281_B6_Vsource)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "fram_LTC4281_B_6_power"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x290, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTC4281_B6_power)
+
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "fram_LTC4281_B_7_control"
+#define REGISTER_MODE_READ
+#define REGISTER_MODE_WRITE
+#define REGISTER_CMDS {0x294, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTC4281_B7_control)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "fram_LTC4281_B_7_alert"
+#define REGISTER_MODE_READ
+#define REGISTER_MODE_WRITE
+#define REGISTER_CMDS {0x298, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTC4281_B7_alert)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "fram_LTC4281_B_7_fault_log"
+#define REGISTER_MODE_READ
+#define REGISTER_MODE_WRITE
+#define REGISTER_CMDS {0x29C, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTC4281_B7_fault_log)
+
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "fram_LTC4281_B_7_ilim_adj"
+#define REGISTER_MODE_READ
+#define REGISTER_MODE_WRITE
+#define REGISTER_CMDS {0x300, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTC4281_B7_ilim_adj)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "fram_LTC4281_B_7_Vsource"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x304, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTC4281_B7_Vsource)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "fram_LTC4281_B_7_power"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x308, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTC4281_B7_power)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "fram_LTC4281_B_8_control"
+#define REGISTER_MODE_READ
+#define REGISTER_MODE_WRITE
+#define REGISTER_CMDS {0x30C, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTC4281_B8_control)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "fram_LTC4281_B_8_alert"
+#define REGISTER_MODE_READ
+#define REGISTER_MODE_WRITE
+#define REGISTER_CMDS {0x310, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTC4281_B8_alert)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "fram_LTC4281_B_8_fault_log"
+#define REGISTER_MODE_READ
+#define REGISTER_MODE_WRITE
+#define REGISTER_CMDS {0x314, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTC4281_B8_fault_log)
+
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "fram_LTC4281_B_8_ilim_adj"
+#define REGISTER_MODE_READ
+#define REGISTER_MODE_WRITE
+#define REGISTER_CMDS {0x318, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTC4281_B8_ilim_adj)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "fram_LTC4281_B_8_Vsource"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x31C, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTC4281_B8_Vsource)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "fram_LTC4281_B_8_power"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x320, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(LTC4281_B8_power)
 
 
 #include "REGISTER_RESET.h"
@@ -368,6 +847,66 @@ static const Register * SKA_MNG_FRAMREGS_registers[] = {
 	&(REGISTER(LTC3676MSKPG)),
 	&(REGISTER(LTC3676Irq)),
 	&(REGISTER(LTC3676PgStatRt)),
+	&(REGISTER(ADT7408_B1_cap)),
+	&(REGISTER(ADT7408_B1_cfg)),
+	&(REGISTER(ADT7408_B1_alm_temp_up)),
+	&(REGISTER(ADT7408_B1_alm_temp_low)),
+	&(REGISTER(ADT7408_B1_cri_temp)),
+	&(REGISTER(ADT7408_B1_temp)),
+	&(REGISTER(ADT7408_B2_cap)),
+	&(REGISTER(ADT7408_B2_cfg)),
+	&(REGISTER(ADT7408_B2_alm_temp_up)),
+	&(REGISTER(ADT7408_B2_alm_temp_low)),
+	&(REGISTER(ADT7408_B2_cri_temp)),
+	&(REGISTER(ADT7408_B2_temp)),
+	&(REGISTER(LTC4281_B1_control)),
+	&(REGISTER(LTC4281_B1_alert)),
+	&(REGISTER(LTC4281_B1_fault_log)),
+	&(REGISTER(LTC4281_B1_ilim_adj)),
+	&(REGISTER(LTC4281_B1_Vsource)),
+	&(REGISTER(LTC4281_B1_power)),
+	&(REGISTER(LTC4281_B2_control)),
+	&(REGISTER(LTC4281_B2_alert)),
+	&(REGISTER(LTC4281_B2_fault_log)),
+	&(REGISTER(LTC4281_B2_ilim_adj)),
+	&(REGISTER(LTC4281_B2_Vsource)),
+	&(REGISTER(LTC4281_B2_power)),
+	&(REGISTER(LTC4281_B3_control)),
+	&(REGISTER(LTC4281_B3_alert)),
+	&(REGISTER(LTC4281_B3_fault_log)),
+	&(REGISTER(LTC4281_B3_ilim_adj)),
+	&(REGISTER(LTC4281_B3_Vsource)),
+	&(REGISTER(LTC4281_B3_power)),
+	&(REGISTER(LTC4281_B4_control)),
+	&(REGISTER(LTC4281_B4_alert)),
+	&(REGISTER(LTC4281_B4_fault_log)),
+	&(REGISTER(LTC4281_B4_ilim_adj)),
+	&(REGISTER(LTC4281_B4_Vsource)),
+	&(REGISTER(LTC4281_B4_power)),
+	&(REGISTER(LTC4281_B5_control)),
+	&(REGISTER(LTC4281_B5_alert)),
+	&(REGISTER(LTC4281_B5_fault_log)),
+	&(REGISTER(LTC4281_B5_ilim_adj)),
+	&(REGISTER(LTC4281_B5_Vsource)),
+	&(REGISTER(LTC4281_B5_power)),
+	&(REGISTER(LTC4281_B6_control)),
+	&(REGISTER(LTC4281_B6_alert)),
+	&(REGISTER(LTC4281_B6_fault_log)),
+	&(REGISTER(LTC4281_B6_ilim_adj)),
+	&(REGISTER(LTC4281_B6_Vsource)),
+	&(REGISTER(LTC4281_B6_power)),
+	&(REGISTER(LTC4281_B7_control)),
+	&(REGISTER(LTC4281_B7_alert)),
+	&(REGISTER(LTC4281_B7_fault_log)),
+	&(REGISTER(LTC4281_B7_ilim_adj)),
+	&(REGISTER(LTC4281_B7_Vsource)),
+	&(REGISTER(LTC4281_B7_power)),
+	&(REGISTER(LTC4281_B8_control)),
+	&(REGISTER(LTC4281_B8_alert)),
+	&(REGISTER(LTC4281_B8_fault_log)),
+	&(REGISTER(LTC4281_B8_ilim_adj)),
+	&(REGISTER(LTC4281_B8_Vsource)),
+	&(REGISTER(LTC4281_B8_power)),
 	&(REGISTER(PSU0_Vout)),
 	&(REGISTER(PSU0_Iout)),
 	&(REGISTER(PSU0_Vin)),
@@ -420,6 +959,66 @@ static struct attribute* SKA_MNG_FRAMREGS_attributes[] = {
 		&(REGISTER(LTC3676MSKPG)),
 		&(REGISTER(LTC3676Irq)),
 		&(REGISTER(LTC3676PgStatRt)),
+		&(REGISTER(ADT7408_B1_cap)),
+		&(REGISTER(ADT7408_B1_cfg)),
+		&(REGISTER(ADT7408_B1_alm_temp_up)),
+		&(REGISTER(ADT7408_B1_alm_temp_low)),
+		&(REGISTER(ADT7408_B1_cri_temp)),
+		&(REGISTER(ADT7408_B1_temp)),
+		&(REGISTER(ADT7408_B2_cap)),
+		&(REGISTER(ADT7408_B2_cfg)),
+		&(REGISTER(ADT7408_B2_alm_temp_up)),
+		&(REGISTER(ADT7408_B2_alm_temp_low)),
+		&(REGISTER(ADT7408_B2_cri_temp)),
+		&(REGISTER(ADT7408_B2_temp)),
+		&(REGISTER(LTC4281_B1_control)),
+		&(REGISTER(LTC4281_B1_alert)),
+		&(REGISTER(LTC4281_B1_fault_log)),
+		&(REGISTER(LTC4281_B1_ilim_adj)),
+		&(REGISTER(LTC4281_B1_Vsource)),
+		&(REGISTER(LTC4281_B1_power)),
+		&(REGISTER(LTC4281_B2_control)),
+		&(REGISTER(LTC4281_B2_alert)),
+		&(REGISTER(LTC4281_B2_fault_log)),
+		&(REGISTER(LTC4281_B2_ilim_adj)),
+		&(REGISTER(LTC4281_B2_Vsource)),
+		&(REGISTER(LTC4281_B2_power)),
+		&(REGISTER(LTC4281_B3_control)),
+		&(REGISTER(LTC4281_B3_alert)),
+		&(REGISTER(LTC4281_B3_fault_log)),
+		&(REGISTER(LTC4281_B3_ilim_adj)),
+		&(REGISTER(LTC4281_B3_Vsource)),
+		&(REGISTER(LTC4281_B3_power)),
+		&(REGISTER(LTC4281_B4_control)),
+		&(REGISTER(LTC4281_B4_alert)),
+		&(REGISTER(LTC4281_B4_fault_log)),
+		&(REGISTER(LTC4281_B4_ilim_adj)),
+		&(REGISTER(LTC4281_B4_Vsource)),
+		&(REGISTER(LTC4281_B4_power)),
+		&(REGISTER(LTC4281_B5_control)),
+		&(REGISTER(LTC4281_B5_alert)),
+		&(REGISTER(LTC4281_B5_fault_log)),
+		&(REGISTER(LTC4281_B5_ilim_adj)),
+		&(REGISTER(LTC4281_B5_Vsource)),
+		&(REGISTER(LTC4281_B5_power)),
+		&(REGISTER(LTC4281_B6_control)),
+		&(REGISTER(LTC4281_B6_alert)),
+		&(REGISTER(LTC4281_B6_fault_log)),
+		&(REGISTER(LTC4281_B6_ilim_adj)),
+		&(REGISTER(LTC4281_B6_Vsource)),
+		&(REGISTER(LTC4281_B6_power)),
+		&(REGISTER(LTC4281_B7_control)),
+		&(REGISTER(LTC4281_B7_alert)),
+		&(REGISTER(LTC4281_B7_fault_log)),
+		&(REGISTER(LTC4281_B7_ilim_adj)),
+		&(REGISTER(LTC4281_B7_Vsource)),
+		&(REGISTER(LTC4281_B7_power)),
+		&(REGISTER(LTC4281_B8_control)),
+		&(REGISTER(LTC4281_B8_alert)),
+		&(REGISTER(LTC4281_B8_fault_log)),
+		&(REGISTER(LTC4281_B8_ilim_adj)),
+		&(REGISTER(LTC4281_B8_Vsource)),
+		&(REGISTER(LTC4281_B8_power)),
 		&(REGISTER(PSU0_Vout)),
 		&(REGISTER(PSU0_Iout)),
 		&(REGISTER(PSU0_Vin)),
