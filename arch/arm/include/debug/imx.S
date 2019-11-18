@@ -11,6 +11,7 @@
  *
  */
 
+#include <asm/assembler.h>
 #include "imx-uart.h"
 
 /*
@@ -19,11 +20,12 @@
  * globally for multi-platform build to use a fixed virtual address
  * for low-level debug uart port across platforms.
  */
-#define IMX_IO_P2V(x)   (			\
-		(0xf4000000 +			\
-		(((x) & 0x50000000) >> 4) +	\
-		(((x) & 0x0a000000) >> 4) +	\
-		(((x) & 0x00ffffff))))
+#define IMX_IO_P2V(x)	(						\
+			(((x) & 0x80000000) >> 7) |			\
+			(0xf4000000 +					\
+			(((x) & 0x50000000) >> 6) +			\
+			(((x) & 0x0b000000) >> 4) +			\
+			(((x) & 0x000fffff))))
 
 #define UART_VADDR	IMX_IO_P2V(UART_PADDR)
 
@@ -33,6 +35,7 @@
 		.endm
 
 		.macro	senduart,rd,rx
+		ARM_BE8(rev \rd, \rd)
 		str	\rd, [\rx, #0x40]	@ TXDATA
 		.endm
 
@@ -41,6 +44,7 @@
 
 		.macro	busyuart,rd,rx
 1002:		ldr	\rd, [\rx, #0x98]	@ SR2
+		ARM_BE8(rev \rd, \rd)
 		tst	\rd, #1 << 3		@ TXDC
 		beq	1002b			@ wait until transmit done
 		.endm

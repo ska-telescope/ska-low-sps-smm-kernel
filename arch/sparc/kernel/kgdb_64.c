@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0
 /* kgdb.c: KGDB support for 64-bit sparc.
  *
  * Copyright (C) 2008 David S. Miller <davem@davemloft.net>
@@ -12,6 +13,8 @@
 #include <asm/kdebug.h>
 #include <asm/ptrace.h>
 #include <asm/irq.h>
+
+#include "kernel.h"
 
 void pt_regs_to_gdb_regs(unsigned long *gdb_regs, struct pt_regs *regs)
 {

@@ -1,10 +1,11 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 #ifndef	__SPI_BITBANG_H
 #define	__SPI_BITBANG_H
 
 #include <linux/workqueue.h>
 
 struct spi_bitbang {
-	spinlock_t		lock;
+	struct mutex		lock;
 	u8			busy;
 	u8			use_dma;
 	u8			flags;		/* extra spi->mode support */
@@ -42,6 +43,6 @@ extern int spi_bitbang_setup_transfer(struct spi_device *spi,
 
 /* start or stop queue processing */
 extern int spi_bitbang_start(struct spi_bitbang *spi);
-extern int spi_bitbang_stop(struct spi_bitbang *spi);
+extern void spi_bitbang_stop(struct spi_bitbang *spi);
 
 #endif	/* __SPI_BITBANG_H */

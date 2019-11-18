@@ -56,7 +56,7 @@
 #include <net/tcp_states.h>
 #include <net/net_namespace.h>
 
-#include <asm/uaccess.h>
+#include <linux/uaccess.h>
 
 /* Configuration Variables */
 static unsigned char ipxcfg_max_hops = 16;
@@ -306,9 +306,9 @@ void ipxitf_down(struct ipx_interface *intrfc)
 	spin_unlock_bh(&ipx_interfaces_lock);
 }
 
-static __inline__ void __ipxitf_put(struct ipx_interface *intrfc)
+static void __ipxitf_put(struct ipx_interface *intrfc)
 {
-	if (atomic_dec_and_test(&intrfc->refcnt))
+	if (refcount_dec_and_test(&intrfc->refcnt))
 		__ipxitf_down(intrfc);
 }
 
@@ -876,7 +876,7 @@ static struct ipx_interface *ipxitf_alloc(struct net_device *dev, __be32 netnum,
 		intrfc->if_ipx_offset 	= ipx_offset;
 		intrfc->if_sknum 	= IPX_MIN_EPHEMERAL_SOCKET;
 		INIT_HLIST_HEAD(&intrfc->if_sklist);
-		atomic_set(&intrfc->refcnt, 1);
+		refcount_set(&intrfc->refcnt, 1);
 		spin_lock_init(&intrfc->if_sklist_lock);
 	}
 
@@ -1105,7 +1105,7 @@ static struct ipx_interface *ipxitf_auto_create(struct net_device *dev,
 		memcpy((char *)&(intrfc->if_node[IPX_NODE_LEN-dev->addr_len]),
 			dev->dev_addr, dev->addr_len);
 		spin_lock_init(&intrfc->if_sklist_lock);
-		atomic_set(&intrfc->refcnt, 1);
+		refcount_set(&intrfc->refcnt, 1);
 		ipxitf_insert(intrfc);
 		dev_hold(dev);
 	}
@@ -1168,11 +1168,10 @@ static int ipxitf_ioctl(unsigned int cmd, void __user *arg)
 		sipx->sipx_network	= ipxif->if_netnum;
 		memcpy(sipx->sipx_node, ipxif->if_node,
 			sizeof(sipx->sipx_node));
-		rc = -EFAULT;
-		if (copy_to_user(arg, &ifr, sizeof(ifr)))
-			break;
-		ipxitf_put(ipxif);
 		rc = 0;
+		if (copy_to_user(arg, &ifr, sizeof(ifr)))
+			rc = -EFAULT;
+		ipxitf_put(ipxif);
 		break;
 	}
 	case SIOCAIPXITFCRT:
@@ -1347,13 +1346,13 @@ static int ipx_create(struct net *net, struct socket *sock, int protocol,
 		goto out;
 
 	rc = -ENOMEM;
-	sk = sk_alloc(net, PF_IPX, GFP_KERNEL, &ipx_proto);
+	sk = sk_alloc(net, PF_IPX, GFP_KERNEL, &ipx_proto, kern);
 	if (!sk)
 		goto out;
 
 	sk_refcnt_debug_inc(sk);
 	sock_init_data(sock, sk);
-	sk->sk_no_check = 1;		/* Checksum off by default */
+	sk->sk_no_check_tx = 1;		/* Checksum off by default */
 	sock->ops = &ipx_dgram_ops;
 	rc = 0;
 out:
@@ -1368,6 +1367,7 @@ static int ipx_release(struct socket *sock)
 		goto out;
 
 	lock_sock(sk);
+	sk->sk_shutdown = SHUTDOWN_MASK;
 	if (!sock_flag(sk, SOCK_DEAD))
 		sk->sk_state_change(sk);
 
@@ -1687,8 +1687,7 @@ out:
 	return rc;
 }
 
-static int ipx_sendmsg(struct kiocb *iocb, struct socket *sock,
-	struct msghdr *msg, size_t len)
+static int ipx_sendmsg(struct socket *sock, struct msghdr *msg, size_t len)
 {
 	struct sock *sk = sock->sk;
 	struct ipx_sock *ipxs = ipx_sk(sk);
@@ -1744,8 +1743,7 @@ static int ipx_sendmsg(struct kiocb *iocb, struct socket *sock,
 		memcpy(usipx->sipx_node, ipxs->dest_addr.node, IPX_NODE_LEN);
 	}
 
-	rc = ipxrtr_route_packet(sk, usipx, msg->msg_iov, len,
-				 flags & MSG_DONTWAIT);
+	rc = ipxrtr_route_packet(sk, usipx, msg, len, flags & MSG_DONTWAIT);
 	if (rc >= 0)
 		rc = len;
 out:
@@ -1754,8 +1752,8 @@ out:
 }
 
 
-static int ipx_recvmsg(struct kiocb *iocb, struct socket *sock,
-		struct msghdr *msg, size_t size, int flags)
+static int ipx_recvmsg(struct socket *sock, struct msghdr *msg, size_t size,
+		       int flags)
 {
 	struct sock *sk = sock->sk;
 	struct ipx_sock *ipxs = ipx_sk(sk);
@@ -1794,8 +1792,11 @@ static int ipx_recvmsg(struct kiocb *iocb, struct socket *sock,
 	locked = false;
 	skb = skb_recv_datagram(sk, flags & ~MSG_DONTWAIT,
 				flags & MSG_DONTWAIT, &rc);
-	if (!skb)
+	if (!skb) {
+		if (rc == -EAGAIN && (sk->sk_shutdown & RCV_SHUTDOWN))
+			rc = 0;
 		goto out;
+	}
 
 	ipx 	= ipx_hdr(skb);
 	copied 	= ntohs(ipx->ipx_pktsize) - sizeof(struct ipxhdr);
@@ -1804,11 +1805,10 @@ static int ipx_recvmsg(struct kiocb *iocb, struct socket *sock,
 		msg->msg_flags |= MSG_TRUNC;
 	}
 
-	rc = skb_copy_datagram_iovec(skb, sizeof(struct ipxhdr), msg->msg_iov,
-				     copied);
+	rc = skb_copy_datagram_msg(skb, sizeof(struct ipxhdr), msg, copied);
 	if (rc)
 		goto out_free;
-	if (skb->tstamp.tv64)
+	if (skb->tstamp)
 		sk->sk_stamp = skb->tstamp;
 
 	if (sipx) {
@@ -1926,6 +1926,26 @@ static int ipx_compat_ioctl(struct socket *sock, unsigned int cmd, unsigned long
 }
 #endif
 
+static int ipx_shutdown(struct socket *sock, int mode)
+{
+	struct sock *sk = sock->sk;
+
+	if (mode < SHUT_RD || mode > SHUT_RDWR)
+		return -EINVAL;
+	/* This maps:
+	 * SHUT_RD   (0) -> RCV_SHUTDOWN  (1)
+	 * SHUT_WR   (1) -> SEND_SHUTDOWN (2)
+	 * SHUT_RDWR (2) -> SHUTDOWN_MASK (3)
+	 */
+	++mode;
+
+	lock_sock(sk);
+	sk->sk_shutdown |= mode;
+	release_sock(sk);
+	sk->sk_state_change(sk);
+
+	return 0;
+}
 
 /*
  * Socket family declarations
@@ -1952,7 +1972,7 @@ static const struct proto_ops ipx_dgram_ops = {
 	.compat_ioctl	= ipx_compat_ioctl,
 #endif
 	.listen		= sock_no_listen,
-	.shutdown	= sock_no_shutdown, /* FIXME: support shutdown */
+	.shutdown	= ipx_shutdown,
 	.setsockopt	= ipx_setsockopt,
 	.getsockopt	= ipx_getsockopt,
 	.sendmsg	= ipx_sendmsg,

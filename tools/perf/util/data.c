@@ -1,12 +1,25 @@
+// SPDX-License-Identifier: GPL-2.0
 #include <linux/compiler.h>
 #include <linux/kernel.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <errno.h>
 #include <unistd.h>
 #include <string.h>
 
 #include "data.h"
 #include "util.h"
+#include "debug.h"
+
+#ifndef O_CLOEXEC
+#ifdef __sparc__
+#define O_CLOEXEC	0x400000
+#elif defined(__alpha__) || defined(__hppa__)
+#define O_CLOEXEC	010000000
+#else
+#define O_CLOEXEC	02000000
+#endif
+#endif
 
 static bool check_pipe(struct perf_data_file *file)
 {
@@ -49,12 +62,14 @@ static int open_file_read(struct perf_data_file *file)
 {
 	struct stat st;
 	int fd;
+	char sbuf[STRERR_BUFSIZE];
 
 	fd = open(file->path, O_RDONLY);
 	if (fd < 0) {
 		int err = errno;
 
-		pr_err("failed to open %s: %s", file->path, strerror(err));
+		pr_err("failed to open %s: %s", file->path,
+			str_error_r(err, sbuf, sizeof(sbuf)));
 		if (err == ENOENT && !strcmp(file->path, "perf.data"))
 			pr_err("  (try 'perf record' first)");
 		pr_err("\n");
@@ -65,7 +80,7 @@ static int open_file_read(struct perf_data_file *file)
 		goto out_close;
 
 	if (!file->force && st.st_uid && (st.st_uid != geteuid())) {
-		pr_err("file %s not owned by current user or root\n",
+		pr_err("File %s not owned by current user or root (use -f to override)\n",
 		       file->path);
 		goto out_close;
 	}
@@ -86,10 +101,20 @@ static int open_file_read(struct perf_data_file *file)
 
 static int open_file_write(struct perf_data_file *file)
 {
+	int fd;
+	char sbuf[STRERR_BUFSIZE];
+
 	if (check_backup(file))
 		return -1;
 
-	return open(file->path, O_CREAT|O_RDWR|O_TRUNC, S_IRUSR|S_IWUSR);
+	fd = open(file->path, O_CREAT|O_RDWR|O_TRUNC|O_CLOEXEC,
+		  S_IRUSR|S_IWUSR);
+
+	if (fd < 0)
+		pr_err("failed to open %s : %s\n", file->path,
+			str_error_r(errno, sbuf, sizeof(sbuf)));
+
+	return fd;
 }
 
 static int open_file(struct perf_data_file *file)
@@ -123,4 +148,45 @@ ssize_t perf_data_file__write(struct perf_data_file *file,
 			      void *buf, size_t size)
 {
 	return writen(file->fd, buf, size);
+}
+
+int perf_data_file__switch(struct perf_data_file *file,
+			   const char *postfix,
+			   size_t pos, bool at_exit)
+{
+	char *new_filepath;
+	int ret;
+
+	if (check_pipe(file))
+		return -EINVAL;
+	if (perf_data_file__is_read(file))
+		return -EINVAL;
+
+	if (asprintf(&new_filepath, "%s.%s", file->path, postfix) < 0)
+		return -ENOMEM;
+
+	/*
+	 * Only fire a warning, don't return error, continue fill
+	 * original file.
+	 */
+	if (rename(file->path, new_filepath))
+		pr_warning("Failed to rename %s to %s\n", file->path, new_filepath);
+
+	if (!at_exit) {
+		close(file->fd);
+		ret = perf_data_file__open(file);
+		if (ret < 0)
+			goto out;
+
+		if (lseek(file->fd, pos, SEEK_SET) == (off_t)-1) {
+			ret = -errno;
+			pr_debug("Failed to lseek to %zu: %s",
+				 pos, strerror(errno));
+			goto out;
+		}
+	}
+	ret = file->fd;
+out:
+	free(new_filepath);
+	return ret;
 }

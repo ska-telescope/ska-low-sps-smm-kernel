@@ -1,7 +1,7 @@
 /*
  * Nvidia AGPGART routines.
  * Based upon a 2.4 agpgart diff by the folks from NVIDIA, and hacked up
- * to work in 2.5 by Dave Jones <davej@redhat.com>
+ * to work in 2.5 by Dave Jones.
  */
 
 #include <linux/module.h>
@@ -420,7 +420,7 @@ static int agp_nvidia_resume(struct pci_dev *pdev)
 #endif
 
 
-static struct pci_device_id agp_nvidia_pci_table[] = {
+static const struct pci_device_id agp_nvidia_pci_table[] = {
 	{
 	.class		= (PCI_CLASS_BRIDGE_HOST << 8),
 	.class_mask	= ~0,

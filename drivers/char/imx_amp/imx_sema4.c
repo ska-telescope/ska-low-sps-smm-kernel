@@ -15,7 +15,6 @@
 #include <linux/interrupt.h>
 #include <linux/io.h>
 #include <linux/err.h>
-#include <linux/mcc_config_linux.h>
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/wait.h>
@@ -45,7 +44,7 @@ imx_sema4_mutex_create(u32 dev_num, u32 mutex_num)
 {
 	struct imx_sema4_mutex *mutex_ptr = NULL;
 
-	if ((mutex_num > SEMA4_NUM_GATES) || dev_num >= SEMA4_NUM_DEVICES)
+	if (mutex_num >= SEMA4_NUM_GATES || dev_num >= SEMA4_NUM_DEVICES)
 		goto out;
 
 	if (imx6_sema4->cpine_val & (1 < mutex_num)) {
@@ -91,7 +90,7 @@ int imx_sema4_mutex_destroy(struct imx_sema4_mutex *mutex_ptr)
 
 	mutex_num = mutex_ptr->gate_num;
 	if ((imx6_sema4->cpine_val & idx_sema4[mutex_num]) == 0) {
-		pr_err("Error: trying to destory a un-allocated sema4.\n");
+		pr_err("Error: trying to destroy a un-allocated sema4.\n");
 		pr_err("mutex_num %d cpine_val 0x%08x.\n",
 				mutex_num, imx6_sema4->cpine_val);
 	}
@@ -122,11 +121,12 @@ EXPORT_SYMBOL(imx_sema4_mutex_destroy);
  */
 int _imx_sema4_mutex_lock(struct imx_sema4_mutex *mutex_ptr)
 {
-	int ret = 0, i = mutex_ptr->gate_num;
+	int ret = 0, i = 0;
 
 	if ((mutex_ptr == NULL) || (mutex_ptr->valid != CORE_MUTEX_VALID))
 		return -EINVAL;
 
+	i = mutex_ptr->gate_num;
 	mutex_ptr->gate_val = readb(imx6_sema4->ioaddr + i);
 	mutex_ptr->gate_val &= SEMA4_GATE_MASK;
 	/* Check to see if this core already own it */
@@ -204,18 +204,11 @@ int imx_sema4_mutex_lock(struct imx_sema4_mutex *mutex_ptr)
 {
 	int ret = 0;
 	unsigned long flags;
-	unsigned long timeout_j; /* jiffies */
 
 	spin_lock_irqsave(&imx6_sema4->lock, flags);
 	ret = _imx_sema4_mutex_lock(mutex_ptr);
 	spin_unlock_irqrestore(&imx6_sema4->lock, flags);
 	while (-EBUSY == ret) {
-		if (MCC_SHMEM_SEMAPHORE_NUMBER == mutex_ptr->gate_num) {
-			timeout_j = msecs_to_jiffies(1000);
-			wait_event_timeout(mutex_ptr->wait_q,
-					mutex_ptr->gate_val == 0, timeout_j);
-			pr_debug("wake up val %d.\n", mutex_ptr->gate_val);
-		}
 		spin_lock_irqsave(&imx6_sema4->lock, flags);
 		ret = _imx_sema4_mutex_lock(mutex_ptr);
 		spin_unlock_irqrestore(&imx6_sema4->lock, flags);
@@ -242,11 +235,12 @@ EXPORT_SYMBOL(imx_sema4_mutex_lock);
  */
 int imx_sema4_mutex_unlock(struct imx_sema4_mutex *mutex_ptr)
 {
-	int ret = 0, i = mutex_ptr->gate_num;
+	int ret = 0, i = 0;
 
 	if ((mutex_ptr == NULL) || (mutex_ptr->valid != CORE_MUTEX_VALID))
 		return -EINVAL;
 
+	i = mutex_ptr->gate_num;
 	mutex_ptr->gate_val = readb(imx6_sema4->ioaddr + i);
 	mutex_ptr->gate_val &= SEMA4_GATE_MASK;
 	/* make sure it is locked by this core */
@@ -279,7 +273,7 @@ static irqreturn_t imx_sema4_isr(int irq, void *dev_id)
 {
 	int i;
 	struct imx_sema4_mutex *mutex_ptr;
-	u32 mask;
+	unsigned int mask;
 	struct imx_sema4_mutex_device *imx6_sema4 = dev_id;
 
 	imx6_sema4->cpntf_val = readw(imx6_sema4->ioaddr + SEMA4_CP0NTF);

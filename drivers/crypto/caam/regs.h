@@ -1,13 +1,16 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * CAAM hardware register-level view
  *
- * Copyright (C) 2008-2015 Freescale Semiconductor, Inc.
+ * Copyright 2008-2016 Freescale Semiconductor, Inc.
+ * Copyright 2017-2019 NXP
  */
 
 #ifndef REGS_H
 #define REGS_H
 
 #include <linux/types.h>
+#include <linux/bitops.h>
 #include <linux/io.h>
 
 /*
@@ -65,42 +68,158 @@
  *
  */
 
-#ifdef __BIG_ENDIAN
-#define wr_reg32(reg, data) out_be32(reg, data)
-#define rd_reg32(reg) in_be32(reg)
-#ifdef CONFIG_64BIT
-#define wr_reg64(reg, data) out_be64(reg, data)
-#define rd_reg64(reg) in_be64(reg)
-#endif
+extern bool caam_little_end;
+extern bool caam_imx;
+
+#define caam_to_cpu(len)						\
+static inline u##len caam##len ## _to_cpu(u##len val)			\
+{									\
+	if (caam_little_end)						\
+		return le##len ## _to_cpu((__force __le##len)val);	\
+	else								\
+		return be##len ## _to_cpu((__force __be##len)val);	\
+}
+
+#define cpu_to_caam(len)					\
+static inline u##len cpu_to_caam##len(u##len val)		\
+{								\
+	if (caam_little_end)					\
+		return (__force u##len)cpu_to_le##len(val);	\
+	else							\
+		return (__force u##len)cpu_to_be##len(val);	\
+}
+
+caam_to_cpu(16)
+caam_to_cpu(32)
+caam_to_cpu(64)
+cpu_to_caam(16)
+cpu_to_caam(32)
+cpu_to_caam(64)
+
+static inline void wr_reg32(void __iomem *reg, u32 data)
+{
+	if (caam_little_end)
+		iowrite32(data, reg);
+	else
+		iowrite32be(data, reg);
+}
+
+static inline u32 rd_reg32(void __iomem *reg)
+{
+	if (caam_little_end)
+		return ioread32(reg);
+
+	return ioread32be(reg);
+}
+
+static inline void clrsetbits_32(void __iomem *reg, u32 clear, u32 set)
+{
+	if (caam_little_end)
+		iowrite32((ioread32(reg) & ~clear) | set, reg);
+	else
+		iowrite32be((ioread32be(reg) & ~clear) | set, reg);
+}
+
+/*
+ * The only users of these wr/rd_reg64 functions is the Job Ring (JR).
+ * The DMA address registers in the JR are handled differently depending on
+ * platform:
+ *
+ * 1. All BE CAAM platforms and i.MX platforms (LE CAAM):
+ *
+ *    base + 0x0000 : most-significant 32 bits
+ *    base + 0x0004 : least-significant 32 bits
+ *
+ * The 32-bit version of this core therefore has to write to base + 0x0004
+ * to set the 32-bit wide DMA address.
+ *
+ * 2. All other LE CAAM platforms (LS1021A etc.)
+ *    base + 0x0000 : least-significant 32 bits
+ *    base + 0x0004 : most-significant 32 bits
+ */
+#if defined(CONFIG_64BIT) && !(defined(CONFIG_HAVE_IMX8_SOC))
+static inline void wr_reg64(void __iomem *reg, u64 data)
+{
+	if (caam_little_end)
+		iowrite64(data, reg);
+	else
+		iowrite64be(data, reg);
+}
+
+static inline u64 rd_reg64(void __iomem *reg)
+{
+	if (caam_little_end)
+		return ioread64(reg);
+	else
+		return ioread64be(reg);
+}
+
+#else /* CONFIG_64BIT */
+static inline void wr_reg64(void __iomem *reg, u64 data)
+{
+	if (!caam_imx && caam_little_end) {
+		wr_reg32((u32 __iomem *)(reg) + 1, data >> 32);
+		wr_reg32((u32 __iomem *)(reg), data);
+	} else {
+		wr_reg32((u32 __iomem *)(reg), data >> 32);
+		wr_reg32((u32 __iomem *)(reg) + 1, data);
+	}
+}
+
+static inline u64 rd_reg64(void __iomem *reg)
+{
+	if (!caam_imx && caam_little_end)
+		return ((u64)rd_reg32((u32 __iomem *)(reg) + 1) << 32 |
+			(u64)rd_reg32((u32 __iomem *)(reg)));
+
+	return ((u64)rd_reg32((u32 __iomem *)(reg)) << 32 |
+		(u64)rd_reg32((u32 __iomem *)(reg) + 1));
+}
+#endif /* CONFIG_64BIT  */
+
+static inline u64 cpu_to_caam_dma64(dma_addr_t value)
+{
+	if (caam_imx)
+#if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
+		return (((u64)cpu_to_caam32(lower_32_bits(value)) << 32) |
+			 (u64)cpu_to_caam32(upper_32_bits(value)));
 #else
-#ifdef __LITTLE_ENDIAN
-#define wr_reg32(reg, data) writel(data, reg)
-#define rd_reg32(reg) readl(reg)
-#ifdef CONFIG_64BIT
-#define wr_reg64(reg, data) writeq(data, reg)
-#define rd_reg64(reg) readq(reg)
-#endif
-#endif
+		return (u64)cpu_to_caam32(lower_32_bits(value)) << 32;
 #endif
 
-#ifdef CONFIG_ARM
-/* These are common macros for Power, put here for ARMs */
-#define setbits32(_addr, _v) writel((readl(_addr) | (_v)), (_addr))
-#define clrbits32(_addr, _v) writel((readl(_addr) & ~(_v)), (_addr))
-#endif
-
-#ifndef CONFIG_64BIT
-static inline void wr_reg64(u64 __iomem *reg, u64 data)
-{
-	wr_reg32((u32 __iomem *)reg, (data & 0xffffffff00000000ull) >> 32);
-	wr_reg32((u32 __iomem *)reg + 1, data & 0x00000000ffffffffull);
+	return cpu_to_caam64(value);
 }
 
-static inline u64 rd_reg64(u64 __iomem *reg)
+static inline u64 caam_dma64_to_cpu(u64 value)
 {
-	return (((u64)rd_reg32((u32 __iomem *)reg)) << 32) |
-		((u64)rd_reg32((u32 __iomem *)reg + 1));
+	if (caam_imx)
+		return (((u64)caam32_to_cpu(lower_32_bits(value)) << 32) |
+			 (u64)caam32_to_cpu(upper_32_bits(value)));
+
+	return caam64_to_cpu(value);
 }
+
+#if defined(CONFIG_ARCH_DMA_ADDR_T_64BIT) && !defined(CONFIG_HAVE_IMX8_SOC)
+#define cpu_to_caam_dma(value) cpu_to_caam_dma64(value)
+#define caam_dma_to_cpu(value) caam_dma64_to_cpu(value)
+#else
+#define cpu_to_caam_dma(value) cpu_to_caam32(value)
+#define caam_dma_to_cpu(value) caam32_to_cpu(value)
+#endif /* CONFIG_ARCH_DMA_ADDR_T_64BIT */
+
+/*
+ * On i.MX8 boards the arch is arm64 but the CAAM dma address size is
+ * 32 bits on 8MQ and 36 bits on 8QM and 8QXP.
+ * For 8QM and 8QXP there is a configurable field PS called pointer size
+ * in the MCFGR register to switch between 32 and 64 (default 32)
+ * But this register is only accessible by the SECO and is left to its
+ * default value.
+ * Here we set the CAAM dma address size to 32 bits for all i.MX8
+ */
+#ifdef CONFIG_HAVE_IMX8_SOC
+#define caam_dma_addr_t u32
+#else
+#define caam_dma_addr_t dma_addr_t
 #endif
 
 /*
@@ -108,101 +227,9 @@ static inline u64 rd_reg64(u64 __iomem *reg)
  * Represents each entry in a JobR output ring
  */
 struct jr_outentry {
-	dma_addr_t desc;/* Pointer to completed descriptor */
+	caam_dma_addr_t desc;/* Pointer to completed descriptor */
 	u32 jrstatus;	/* Status for completed descriptor */
 } __packed;
-
-/*
- * CHA version ID / instantiation bitfields
- * Defined for use within cha_id in perfmon
- * Note that the same shift/mask selectors can be used to pull out number
- * of instantiated blocks within cha_num in perfmon, the locations are
- * the same.
- */
-
-/* Job Ring */
-#define CHA_ID_JR_SHIFT	60
-#define CHA_ID_JR_MASK		(0xfull << CHA_ID_JR_SHIFT)
-
-/* DEscriptor COntroller */
-#define CHA_ID_DECO_SHIFT	56
-#define CHA_ID_DECO_MASK	(0xfull << CHA_ID_DECO_SHIFT)
-#define CHA_NUM_DECONUM_SHIFT	56 /* legacy definition */
-#define CHA_NUM_DECONUM_MASK	(0xfull << CHA_NUM_DECONUM_SHIFT)
-
-/* ZUC-Authentication */
-#define CHA_ID_ZA_SHIFT	44
-#define CHA_ID_ZA_MASK		(0xfull << CHA_ID_ZA_SHIFT)
-
-/* ZUC-Encryption */
-#define CHA_ID_ZE_SHIFT	40
-#define CHA_ID_ZE_MASK		(0xfull << CHA_ID_ZE_SHIFT)
-
-/* SNOW f9 */
-#define CHA_ID_SNW9_SHIFT	36
-#define CHA_ID_SNW9_MASK	(0xfull << CHA_ID_SNW9_SHIFT)
-
-/* CRC */
-#define CHA_ID_CRC_SHIFT	32
-#define CHA_ID_CRC_MASK		(0xfull << CHA_ID_CRC_SHIFT)
-
-/* Public Key */
-#define CHA_ID_PK_SHIFT	28
-#define CHA_ID_PK_MASK		(0xfull << CHA_ID_PK_SHIFT)
-
-/* Kasumi */
-#define CHA_ID_KAS_SHIFT	24
-#define CHA_ID_KAS_MASK		(0xfull << CHA_ID_KAS_SHIFT)
-
-/* SNOW f8 */
-#define CHA_ID_SNW8_SHIFT	20
-#define CHA_ID_SNW8_MASK	(0xfull << CHA_ID_SNW8_SHIFT)
-
-/*
- * Random Generator
- * RNG4 = FIPS-verification-compliant, requires init kickstart for use
- */
-#define CHA_ID_RNG_SHIFT	16
-#define CHA_ID_RNG_MASK		(0xfull << CHA_ID_RNG_SHIFT)
-#define CHA_ID_RNG_A		(0x1ull << CHA_ID_RNG_SHIFT)
-#define CHA_ID_RNG_B		(0x2ull << CHA_ID_RNG_SHIFT)
-#define CHA_ID_RNG_C		(0x3ull << CHA_ID_RNG_SHIFT)
-#define CHA_ID_RNG_4		(0x4ull << CHA_ID_RNG_SHIFT)
-
-/*
- * Message Digest
- * LP256 = Low Power (MD5/SHA1/SHA224/SHA256 + HMAC)
- * LP512 = Low Power (LP256 + SHA384/SHA512)
- * HP    = High Power (LP512 + SMAC)
- */
-#define CHA_ID_MD_SHIFT		12
-#define CHA_ID_MD_MASK		(0xfull << CHA_ID_MD_SHIFT)
-#define CHA_ID_MD_LP256		(0x0ull << CHA_ID_MD_SHIFT)
-#define CHA_ID_MD_LP512		(0x1ull << CHA_ID_MD_SHIFT)
-#define CHA_ID_MD_HP		(0x2ull << CHA_ID_MD_SHIFT)
-
-/* ARC4 Streamcipher */
-#define CHA_ID_ARC4_SHIFT	8
-#define CHA_ID_ARC4_MASK	(0xfull << CHA_ID_ARC4_SHIFT)
-#define CHA_ID_ARC4_LP		(0x0ull << CHA_ID_ARC4_SHIFT)
-#define CHA_ID_ARC4_HP		(0x1ull << CHA_ID_ARC4_SHIFT)
-
-/* DES Blockcipher Accelerator */
-#define CHA_ID_DES_SHIFT	4
-#define CHA_ID_DES_MASK		(0xfull << CHA_ID_DES_SHIFT)
-
-/*
- * AES Blockcipher + Combo Mode Accelerator
- * LP = Low Power (includes ECB/CBC/CFB128/OFB/CTR/CCM/CMAC/XCBC-MAC)
- * HP = High Power (LP + CBCXCBC/CTRXCBC/XTS/GCM)
- * DIFFPWR = ORed in if differential-power-analysis resistance implemented
- */
-#define CHA_ID_AES_SHIFT	0
-#define CHA_ID_AES_MASK		(0xfull << CHA_ID_AES_SHIFT)
-#define CHA_ID_AES_LP		(0x3ull << CHA_ID_AES_SHIFT)
-#define CHA_ID_AES_HP		(0x4ull << CHA_ID_AES_SHIFT)
-#define CHA_ID_AES_DIFFPWR	(0x1ull << CHA_ID_AES_SHIFT)
-
 
 /*
  * caam_perfmon - Performance Monitor/Secure Memory Status/
@@ -212,8 +239,62 @@ struct jr_outentry {
  */
 
 /* Number of DECOs */
-#define CHA_NUM_DECONUM_SHIFT	56
-#define CHA_NUM_DECONUM_MASK	(0xfull << CHA_NUM_DECONUM_SHIFT)
+#define CHA_NUM_MS_DECONUM_SHIFT	24
+#define CHA_NUM_MS_DECONUM_MASK	(0xfull << CHA_NUM_MS_DECONUM_SHIFT)
+
+/*
+ * CHA version IDs / instantiation bitfields
+ * Defined for use with the cha_id fields in perfmon, but the same shift/mask
+ * selectors can be used to pull out the number of instantiated blocks within
+ * cha_num fields in perfmon because the locations are the same.
+ */
+#define CHA_ID_LS_AES_SHIFT	0
+#define CHA_ID_LS_AES_MASK	(0xfull << CHA_ID_LS_AES_SHIFT)
+#define CHA_ID_LS_AES_LP	(0x3ull << CHA_ID_LS_AES_SHIFT)
+#define CHA_ID_LS_AES_HP	(0x4ull << CHA_ID_LS_AES_SHIFT)
+
+#define CHA_ID_LS_DES_SHIFT	4
+#define CHA_ID_LS_DES_MASK	(0xfull << CHA_ID_LS_DES_SHIFT)
+
+#define CHA_ID_LS_ARC4_SHIFT	8
+#define CHA_ID_LS_ARC4_MASK	(0xfull << CHA_ID_LS_ARC4_SHIFT)
+
+#define CHA_ID_LS_MD_SHIFT	12
+#define CHA_ID_LS_MD_MASK	(0xfull << CHA_ID_LS_MD_SHIFT)
+#define CHA_ID_LS_MD_LP256	(0x0ull << CHA_ID_LS_MD_SHIFT)
+#define CHA_ID_LS_MD_LP512	(0x1ull << CHA_ID_LS_MD_SHIFT)
+#define CHA_ID_LS_MD_HP		(0x2ull << CHA_ID_LS_MD_SHIFT)
+
+#define CHA_ID_LS_RNG_SHIFT	16
+#define CHA_ID_LS_RNG_MASK	(0xfull << CHA_ID_LS_RNG_SHIFT)
+
+#define CHA_ID_LS_SNW8_SHIFT	20
+#define CHA_ID_LS_SNW8_MASK	(0xfull << CHA_ID_LS_SNW8_SHIFT)
+
+#define CHA_ID_LS_KAS_SHIFT	24
+#define CHA_ID_LS_KAS_MASK	(0xfull << CHA_ID_LS_KAS_SHIFT)
+
+#define CHA_ID_LS_PK_SHIFT	28
+#define CHA_ID_LS_PK_MASK	(0xfull << CHA_ID_LS_PK_SHIFT)
+
+#define CHA_ID_MS_CRC_SHIFT	0
+#define CHA_ID_MS_CRC_MASK	(0xfull << CHA_ID_MS_CRC_SHIFT)
+
+#define CHA_ID_MS_SNW9_SHIFT	4
+#define CHA_ID_MS_SNW9_MASK	(0xfull << CHA_ID_MS_SNW9_SHIFT)
+
+#define CHA_ID_MS_DECO_SHIFT	24
+#define CHA_ID_MS_DECO_MASK	(0xfull << CHA_ID_MS_DECO_SHIFT)
+
+#define CHA_ID_MS_JR_SHIFT	28
+#define CHA_ID_MS_JR_MASK	(0xfull << CHA_ID_MS_JR_SHIFT)
+
+/*
+ * caam_perfmon - Performance Monitor/Secure Memory Status/
+ *                CAAM Global Status/Component Version IDs
+ *
+ * Spans f00-fff wherever instantiated
+ */
 
 struct sec_vid {
 	u16 ip_id;
@@ -223,7 +304,10 @@ struct sec_vid {
 
 #define SEC_VID_IPID_SHIFT      16
 #define SEC_VID_MAJ_SHIFT       8
-#define SEC_VID_MAJ_MASK        0xFF00
+#define SEC_VID_MAJ_MASK        0x0000FF00
+
+#define CCB_VID_ERA_SHIFT       24
+#define CCB_VID_ERA_MASK        0x000000FF
 
 struct caam_perfmon {
 	/* Performance Monitor Registers			f00-f9f */
@@ -237,11 +321,17 @@ struct caam_perfmon {
 	u64 rsvd[13];
 
 	/* CAAM Hardware Instantiation Parameters		fa0-fbf */
-	u64 cha_rev;		/* CRNR - CHA Revision Number		*/
-#define CTPR_QI_SHIFT		57
-#define CTPR_QI_MASK		(0x1ull << CTPR_QI_SHIFT)
-	u64 comp_parms;	/* CTPR - Compile Parameters Register	*/
-
+	u32 cha_rev_ms;		/* CRNR - CHA Rev No. Most significant half*/
+	u32 cha_rev_ls;		/* CRNR - CHA Rev No. Least significant half*/
+#define CTPR_MS_QI_SHIFT	25
+#define CTPR_MS_QI_MASK		(0x1ull << CTPR_MS_QI_SHIFT)
+#define CTPR_MS_DPAA2		BIT(13)
+#define CTPR_MS_VIRT_EN_INCL	0x00000001
+#define CTPR_MS_VIRT_EN_POR	0x00000002
+#define CTPR_MS_PG_SZ_MASK	0x10
+#define CTPR_MS_PG_SZ_SHIFT	4
+	u32 comp_parms_ms;	/* CTPR - Compile Parameters Register	*/
+	u32 comp_parms_ls;	/* CTPR - Compile Parameters Register	*/
 	/* Secure Memory State Visibility */
 	u32 rsvd1;
 	u32 smstatus;	/* Secure memory status */
@@ -252,6 +342,8 @@ struct caam_perfmon {
 	u64 faultaddr;	/* FAR  - Fault Address		*/
 	u32 faultliodn;	/* FALR - Fault Address LIODN	*/
 	u32 faultdetail;	/* FADR - Fault Addr Detail	*/
+#define CSTA_PLEND		BIT(10)
+#define CSTA_ALT_PLEND		BIT(18)
 	u32 rsvd3;
 	u32 status;		/* CSTA - CAAM Status */
 	u32 smpart;		/* Secure Memory Partition Parameters */
@@ -260,9 +352,12 @@ struct caam_perfmon {
 	/* Component Instantiation Parameters			fe0-fff */
 	u32 rtic_id;		/* RVID - RTIC Version ID	*/
 	u32 ccb_id;		/* CCBVID - CCB Version ID	*/
-	u64 cha_id;		/* CHAVID - CHA Version ID	*/
-	u64 cha_num;		/* CHANUM - CHA Number		*/
-	u64 caam_id;		/* CAAMVID - CAAM Version ID	*/
+	u32 cha_id_ms;		/* CHAVID - CHA Version ID Most Significant*/
+	u32 cha_id_ls;		/* CHAVID - CHA Version ID Least Significant*/
+	u32 cha_num_ms;		/* CHANUM - CHA Number Most Significant	*/
+	u32 cha_num_ls;		/* CHANUM - CHA Number Least Significant*/
+	u32 caam_id_ms;		/* CAAMVID - CAAM Version ID MS	*/
+	u32 caam_id_ls;		/* CAAMVID - CAAM Version ID LS	*/
 };
 
 #define SMSTATUS_PART_SHIFT	28
@@ -331,12 +426,6 @@ struct masterid {
 	u32 liodn_ls;	/* LIODN for non-sequence and seq access */
 };
 
-/* Partition ID for DMA configuration */
-struct partid {
-	u32 rsvd1;
-	u32 pidr;	/* partition ID, DECO */
-};
-
 /* RNGB test mode (replicated twice in some configurations) */
 /* Padded out to 0x100 */
 struct rngtst {
@@ -372,7 +461,18 @@ struct rngtst {
 
 /* RNG4 TRNG test registers */
 struct rng4tst {
-#define RTMCTL_PRGM	0x00010000	/* 1 -> program mode, 0 -> run mode */
+#define RTMCTL_ACC  BIT(5)  /* TRNG access mode */
+#define RTMCTL_PRGM BIT(16) /* 1 -> program mode, 0 -> run mode */
+#define RTMCTL_SAMP_MODE_VON_NEUMANN_ES_SC	0 /* use von Neumann data in
+						     both entropy shifter and
+						     statistical checker */
+#define RTMCTL_SAMP_MODE_RAW_ES_SC		1 /* use raw data in both
+						     entropy shifter and
+						     statistical checker */
+#define RTMCTL_SAMP_MODE_VON_NEUMANN_ES_RAW_SC	2 /* use von Neumann data in
+						     entropy shifter, raw data
+						     in statistical checker */
+#define RTMCTL_SAMP_MODE_INVALID		3 /* invalid combination */
 	u32 rtmctl;		/* misc. control register */
 	u32 rtscmisc;		/* statistical check misc. register */
 	u32 rtpkrrng;		/* poker range register */
@@ -390,6 +490,7 @@ struct rng4tst {
 		u32 rttotsam;	/* PRGM=0: total samples register */
 	};
 	u32 rtfrqmin;		/* frequency count min. limit register */
+#define RTFRQMAX_DISABLE	(1 << 20)
 	union {
 		u32 rtfrqmax;	/* PRGM=1: freq. count max. limit register */
 		u32 rtfrqcnt;	/* PRGM=0: freq. count register */
@@ -431,11 +532,14 @@ struct caam_ctrl {
 	/* Bus Access Configuration Section			010-11f */
 	/* Read/Writable                                                */
 	struct masterid jr_mid[4];	/* JRxLIODNR - JobR LIODN setup */
-	u32 rsvd3[12];
+	u32 rsvd3[11];
+	u32 jrstart;			/* JRSTART - Job Ring Start Register */
 	struct masterid rtic_mid[4];	/* RTICxLIODNR - RTIC LIODN setup */
-	u32 rsvd4[7];
+	u32 rsvd4[5];
+	u32 deco_rsr;			/* DECORSR - Deco Request Source */
+	u32 rsvd11;
 	u32 deco_rq;			/* DECORR - DECO Request */
-	struct partid deco_mid[5];	/* DECOxLIODNR - 1 per DECO */
+	struct masterid deco_mid[5];	/* DECOxLIODNR - 1 per DECO */
 	u32 rsvd5[22];
 
 	/* DECO Availability/Reset Section			120-3ff */
@@ -474,23 +578,68 @@ struct caam_ctrl {
 #define MCFGR_DMA_RESET		0x10000000
 #define MCFGR_LONG_PTR		0x00010000 /* Use >32-bit desc addressing */
 #define SCFGR_RDBENABLE		0x00000400
+#define SCFGR_VIRT_EN		0x00008000
 #define DECORR_RQD0ENABLE	0x00000001 /* Enable DECO0 for direct access */
+#define DECORSR_JR0		0x00000001 /* JR to supply TZ, SDID, ICID */
+#define DECORSR_VALID		0x80000000
 #define DECORR_DEN0		0x00010000 /* DECO0 available for access*/
 
 /* AXI read cache control */
 #define MCFGR_ARCACHE_SHIFT	12
 #define MCFGR_ARCACHE_MASK	(0xf << MCFGR_ARCACHE_SHIFT)
+#define MCFGR_ARCACHE_BUFF	(0x1 << MCFGR_ARCACHE_SHIFT)
+#define MCFGR_ARCACHE_CACH	(0x2 << MCFGR_ARCACHE_SHIFT)
+#define MCFGR_ARCACHE_RALL	(0x4 << MCFGR_ARCACHE_SHIFT)
 
 /* AXI write cache control */
 #define MCFGR_AWCACHE_SHIFT	8
 #define MCFGR_AWCACHE_MASK	(0xf << MCFGR_AWCACHE_SHIFT)
+#define MCFGR_AWCACHE_BUFF	(0x1 << MCFGR_AWCACHE_SHIFT)
+#define MCFGR_AWCACHE_CACH	(0x2 << MCFGR_AWCACHE_SHIFT)
+#define MCFGR_AWCACHE_WALL	(0x8 << MCFGR_AWCACHE_SHIFT)
 
 /* AXI pipeline depth */
 #define MCFGR_AXIPIPE_SHIFT	4
 #define MCFGR_AXIPIPE_MASK	(0xf << MCFGR_AXIPIPE_SHIFT)
 
 #define MCFGR_AXIPRI		0x00000008 /* Assert AXI priority sideband */
-#define MCFGR_BURST_64		0x00000001 /* Max burst size */
+#define MCFGR_LARGE_BURST	0x00000004 /* 128/256-byte burst size */
+#define MCFGR_BURST_64		0x00000001 /* 64-byte burst size */
+
+/* JRSTART register offsets */
+#define JRSTART_JR0_START       0x00000001 /* Start Job ring 0 */
+#define JRSTART_JR1_START       0x00000002 /* Start Job ring 1 */
+#define JRSTART_JR2_START       0x00000004 /* Start Job ring 2 */
+#define JRSTART_JR3_START       0x00000008 /* Start Job ring 3 */
+
+/* Secure Memory Configuration - if you have it */
+/* Secure Memory Register Offset from JR Base Reg*/
+#define SM_V1_OFFSET 0x0f4
+#define SM_V2_OFFSET 0xa00
+
+/* Minimum SM Version ID requiring v2 SM register mapping */
+#define SMVID_V2 0x20105
+
+struct caam_secure_mem_v1 {
+	u32 sm_cmd;	/* SMCJRx - Secure memory command */
+	u32 rsvd1;
+	u32 sm_status;	/* SMCSJRx - Secure memory status */
+    u32 rsvd2;
+
+	u32 sm_perm;	/* SMAPJRx - Secure memory access perms */
+	u32 sm_group2;	/* SMAP2JRx - Secure memory access group 2 */
+	u32 sm_group1;	/* SMAP1JRx - Secure memory access group 1 */
+};
+
+struct caam_secure_mem_v2 {
+	u32 sm_perm;	/* SMAPJRx - Secure memory access perms */
+	u32 sm_group2;	/* SMAP2JRx - Secure memory access group 2 */
+	u32 sm_group1;	/* SMAP1JRx - Secure memory access group 1 */
+	u32 rsvd1[118];
+	u32 sm_cmd;	/* SMCJRx - Secure memory command */
+	u32 rsvd2;
+	u32 sm_status;	/* SMCSJRx - Secure memory status */
+};
 
 /*
  * caam_job_ring - direct job ring setup
@@ -533,19 +682,7 @@ struct caam_job_ring {
 	/* Command/control */
 	u32 rsvd11;
 	u32 jrcommand;	/* JRCRx - JobR command */
-
-	u32 rsvd12[33];
-
-	/* Secure Memory Configuration - if you have it */
-	u32 sm_cmd;	/* SMCJRx - Secure memory command */
-	u32 rsvd13;
-	u32 sm_status;	/* SMCSJRx - Secure memory status */
-	u32 rsvd14;
-	u32 sm_perm;	/* SMAPJRx - Secure memory access perms */
-	u32 sm_group2;	/* SMAP2JRx - Secure memory access group 2 */
-	u32 sm_group1;	/* SMAP1JRx - Secure memory access group 1 */
-
-	u32 rsvd15[891];
+	u32 rsvd12[931];
 
 	/* Performance Monitor                                  f00-fff */
 	struct caam_perfmon perfmon;
@@ -917,34 +1054,10 @@ struct caam_deco {
 #define DECO_JQCR_WHL		0x20000000
 #define DECO_JQCR_FOUR		0x10000000
 
-/*
- * Current top-level view of memory map is:
- *
- * 0x0000 - 0x0fff - CAAM Top-Level Control
- * 0x1000 - 0x1fff - Job Ring 0
- * 0x2000 - 0x2fff - Job Ring 1
- * 0x3000 - 0x3fff - Job Ring 2
- * 0x4000 - 0x4fff - Job Ring 3
- * 0x5000 - 0x5fff - (unused)
- * 0x6000 - 0x6fff - Assurance Controller
- * 0x7000 - 0x7fff - Queue Interface
- * 0x8000 - 0x8fff - DECO-CCB 0
- * 0x9000 - 0x9fff - DECO-CCB 1
- * 0xa000 - 0xafff - DECO-CCB 2
- * 0xb000 - 0xbfff - DECO-CCB 3
- * 0xc000 - 0xcfff - DECO-CCB 4
- *
- * caam_full describes the full register view of CAAM if useful,
- * although many configurations may choose to implement parts of
- * the register map separately, in differing privilege regions
- */
-struct caam_full {
-	struct caam_ctrl __iomem ctrl;
-	struct caam_job_ring jr[4];
-	u64 rsvd[512];
-	struct caam_assurance assure;
-	struct caam_queue_if qi;
-	struct caam_deco deco;
-};
-
+#define JR_BLOCK_NUMBER		1
+#define ASSURE_BLOCK_NUMBER	6
+#define QI_BLOCK_NUMBER		7
+#define DECO_BLOCK_NUMBER	8
+#define PG_SIZE_4K		0x1000
+#define PG_SIZE_64K		0x10000
 #endif /* REGS_H */

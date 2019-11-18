@@ -1,7 +1,7 @@
 /*
  * fsl_asrc.h - Freescale ASRC ALSA SoC header file
  *
- * Copyright (C) 2014-2015 Freescale Semiconductor, Inc.
+ * Copyright (C) 2014-2016 Freescale Semiconductor, Inc.
  *
  * Author: Nicolin Chen <nicoleotsuka@gmail.com>
  *
@@ -13,7 +13,11 @@
 #ifndef _FSL_ASRC_H
 #define _FSL_ASRC_H
 
+#include <sound/asound.h>
 #include <uapi/linux/mxc_asrc.h>
+#include <linux/miscdevice.h>
+
+#define ASRC_PAIR_MAX_NUM	(ASRC_PAIR_C + 1)
 
 #define IN	0
 #define OUT	1
@@ -26,9 +30,9 @@
 #define ASRC_DMA_BUFFER_SIZE		(1024 * 48 * 4)
 #define ASRC_MAX_BUFFER_SIZE		(1024 * 48)
 #define ASRC_OUTPUT_LAST_SAMPLE_MAX	32
-#define ASRC_OUTPUT_LAST_SAMPLE		16
+#define ASRC_OUTPUT_LAST_SAMPLE		4
 
-#define IDEAL_RATIO_RATE		200000
+#define IDEAL_RATIO_RATE		1000000
 
 #define REG_ASRCTR			0x00
 #define REG_ASRIER			0x04
@@ -135,10 +139,13 @@
 #define ASRCFG_INIRQi			(1 << ASRCFG_INIRQi_SHIFT(i))
 #define ASRCFG_NDPRi_SHIFT(i)		(18 + i)
 #define ASRCFG_NDPRi_MASK(i)		(1 << ASRCFG_NDPRi_SHIFT(i))
+#define ASRCFG_NDPRi_ALL_SHIFT		18
+#define ASRCFG_NDPRi_ALL_MASK		(7 << ASRCFG_NDPRi_ALL_SHIFT)
 #define ASRCFG_NDPRi			(1 << ASRCFG_NDPRi_SHIFT(i))
 #define ASRCFG_POSTMODi_SHIFT(i)	(8 + (i << 2))
 #define ASRCFG_POSTMODi_WIDTH		2
 #define ASRCFG_POSTMODi_MASK(i)		(((1 << ASRCFG_POSTMODi_WIDTH) - 1) << ASRCFG_POSTMODi_SHIFT(i))
+#define ASRCFG_POSTMODi_ALL_MASK	(ASRCFG_POSTMODi_MASK(0) | ASRCFG_POSTMODi_MASK(1) | ASRCFG_POSTMODi_MASK(2))
 #define ASRCFG_POSTMOD(i, v)		((v) << ASRCFG_POSTMODi_SHIFT(i))
 #define ASRCFG_POSTMODi_UP(i)		(0 << ASRCFG_POSTMODi_SHIFT(i))
 #define ASRCFG_POSTMODi_DCON(i)		(1 << ASRCFG_POSTMODi_SHIFT(i))
@@ -146,6 +153,7 @@
 #define ASRCFG_PREMODi_SHIFT(i)		(6 + (i << 2))
 #define ASRCFG_PREMODi_WIDTH		2
 #define ASRCFG_PREMODi_MASK(i)		(((1 << ASRCFG_PREMODi_WIDTH) - 1) << ASRCFG_PREMODi_SHIFT(i))
+#define ASRCFG_PREMODi_ALL_MASK		(ASRCFG_PREMODi_MASK(0) | ASRCFG_PREMODi_MASK(1) | ASRCFG_PREMODi_MASK(2))
 #define ASRCFG_PREMOD(i, v)		((v) << ASRCFG_PREMODi_SHIFT(i))
 #define ASRCFG_PREMODi_UP(i)		(0 << ASRCFG_PREMODi_SHIFT(i))
 #define ASRCFG_PREMODi_DCON(i)		(1 << ASRCFG_PREMODi_SHIFT(i))
@@ -287,9 +295,13 @@
 
 #define ASRC_CLK_MAX_NUM	16
 
+enum asrc_word_width {
+	ASRC_WIDTH_24_BIT = 0,
+	ASRC_WIDTH_16_BIT = 1,
+	ASRC_WIDTH_8_BIT  = 2,
+};
 
 struct dma_block {
-	dma_addr_t dma_paddr;
 	void *dma_vaddr;
 	unsigned int length;
 };
@@ -320,6 +332,7 @@ struct fsl_asrc_pair {
 	struct dma_chan *dma_chan[2];
 	struct imx_dma_data dma_data;
 	unsigned int pos;
+	unsigned int pair_streams;
 
 	void *private;
 };
@@ -334,14 +347,16 @@ struct fsl_asrc_pair {
  * @paddr: physical address to the base address of registers
  * @mem_clk: clock source to access register
  * @ipg_clk: clock source to drive peripheral
+ * @spba_clk: SPBA clock (optional, depending on SoC design)
  * @asrck_clk: clock sources to driver ASRC internal logic
  * @lock: spin lock for resource protection
  * @pair: pair pointers
  * @channel_bits: width of ASRCNCR register for each pair
  * @channel_avail: non-occupied channel numbers
+ * @pair_streams:indicat which substream is running
  * @asrc_rate: default sample rate for ASoC Back-Ends
  * @asrc_width: default sample width for ASoC Back-Ends
- * @name: driver name
+ * @regcache_cfg: store register value of REG_ASRCFG
  */
 struct fsl_asrc {
 	struct snd_dmaengine_dai_dma_data dma_params_rx;
@@ -351,24 +366,31 @@ struct fsl_asrc {
 	unsigned long paddr;
 	struct clk *mem_clk;
 	struct clk *ipg_clk;
-	struct clk *dma_clk;
+	struct clk *spba_clk;
 	struct clk *asrck_clk[ASRC_CLK_MAX_NUM];
+	unsigned char *clk_map[2];
 	spinlock_t lock;
 
 	struct snd_pcm_substream *substream[2];
 	struct fsl_asrc_pair *pair[ASRC_PAIR_MAX_NUM];
+	struct miscdevice asrc_miscdev;
 	unsigned int channel_bits;
 	unsigned int channel_avail;
 
 	int asrc_rate;
 	int asrc_width;
+	int dma_type;  /* 0 is sdma, 1 is edma */
 
 	u32 regcache_cfg;
-
-	char name[32];
+	char name[20];
 };
+
+#define DMA_SDMA 0
+#define DMA_EDMA 1
 
 extern struct snd_soc_platform_driver fsl_asrc_platform;
 struct dma_chan *fsl_asrc_get_dma_channel(struct fsl_asrc_pair *pair, bool dir);
+int fsl_asrc_request_pair(int channels, struct fsl_asrc_pair *pair);
+void fsl_asrc_release_pair(struct fsl_asrc_pair *pair);
 
 #endif /* _FSL_ASRC_H */

@@ -1,20 +1,54 @@
 /****************************************************************************
 *
-*    Copyright (C) 2005 - 2014 by Vivante Corp.
+*    The MIT License (MIT)
 *
-*    This program is free software; you can redistribute it and/or modify
-*    it under the terms of the GNU General Public License as published by
-*    the Free Software Foundation; either version 2 of the license, or
-*    (at your option) any later version.
+*    Copyright (c) 2014 - 2018 Vivante Corporation
+*
+*    Permission is hereby granted, free of charge, to any person obtaining a
+*    copy of this software and associated documentation files (the "Software"),
+*    to deal in the Software without restriction, including without limitation
+*    the rights to use, copy, modify, merge, publish, distribute, sublicense,
+*    and/or sell copies of the Software, and to permit persons to whom the
+*    Software is furnished to do so, subject to the following conditions:
+*
+*    The above copyright notice and this permission notice shall be included in
+*    all copies or substantial portions of the Software.
+*
+*    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+*    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+*    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+*    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+*    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+*    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+*    DEALINGS IN THE SOFTWARE.
+*
+*****************************************************************************
+*
+*    The GPL License (GPL)
+*
+*    Copyright (C) 2014 - 2018 Vivante Corporation
+*
+*    This program is free software; you can redistribute it and/or
+*    modify it under the terms of the GNU General Public License
+*    as published by the Free Software Foundation; either version 2
+*    of the License, or (at your option) any later version.
 *
 *    This program is distributed in the hope that it will be useful,
 *    but WITHOUT ANY WARRANTY; without even the implied warranty of
-*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 *    GNU General Public License for more details.
 *
 *    You should have received a copy of the GNU General Public License
-*    along with this program; if not write to the Free Software
-*    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+*    along with this program; if not, write to the Free Software Foundation,
+*    Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+*
+*****************************************************************************
+*
+*    Note: This software is released under dual MIT and GPL licenses. A
+*    recipient may use this file under the terms of either the MIT license or
+*    GPL License. If you wish to use only one license not the other, you can
+*    indicate your decision by deleting one of the above license notices in your
+*    version of this file.
 *
 *****************************************************************************/
 
@@ -490,7 +524,7 @@ static gcfGETITEMSIZE _itemSize[] =
 ******************************* Printing Functions *****************************
 \******************************************************************************/
 
-#if gcdDEBUG || gcdBUFFERED_OUTPUT
+#if gcmIS_DEBUG(gcdDEBUG_TRACE) || gcdBUFFERED_OUTPUT
 static void
 _DirectPrint(
     gctCONST_STRING Message,
@@ -595,7 +629,7 @@ _PrintBuffer(
     IN gctPOINTER PrefixData,
     IN gctPOINTER Data,
     IN gctUINT Address,
-    IN gctUINT DataSize,
+    IN gctSIZE_T DataSize,
     IN gceDUMP_BUFFER Type,
     IN gctUINT32 DmaAddress
     )
@@ -612,7 +646,8 @@ _PrintBuffer(
 
     static const gctINT COLUMN_COUNT = 8;
 
-    gctUINT i, count, column, address;
+    gctUINT i, column, address;
+    gctSIZE_T count;
     gctUINT32_PTR data;
     gctCHAR buffer[768];
     gctUINT indent, len;
@@ -633,11 +668,11 @@ _PrintBuffer(
 
     switch (Type)
     {
-    case gceDUMP_BUFFER_CONTEXT:
-    case gceDUMP_BUFFER_USER:
-    case gceDUMP_BUFFER_KERNEL:
-    case gceDUMP_BUFFER_LINK:
-    case gceDUMP_BUFFER_WAITLINK:
+    case gcvDUMP_BUFFER_CONTEXT:
+    case gcvDUMP_BUFFER_USER:
+    case gcvDUMP_BUFFER_KERNEL:
+    case gcvDUMP_BUFFER_LINK:
+    case gcvDUMP_BUFFER_WAITLINK:
         /* Form and print the title string. */
         gcmkSPRINTF2(
             buffer + indent, gcmSIZEOF(buffer) - indent,
@@ -655,7 +690,7 @@ _PrintBuffer(
         command = gcvTRUE;
         break;
 
-    case gceDUMP_BUFFER_FROM_USER:
+    case gcvDUMP_BUFFER_FROM_USER:
         /* This is not a command buffer. */
         command = gcvFALSE;
 
@@ -680,7 +715,7 @@ _PrintBuffer(
     {
         gcmkSPRINTF2(
             buffer + indent, gcmSIZEOF(buffer) - indent,
-            "@[kernel.command %08X %08X\n", Address, DataSize
+            "@[kernel.command %08X %08X\n", Address, (gctUINT32)DataSize
             );
 
         gcmkOUTPUT_STRING(buffer);
@@ -727,7 +762,7 @@ _PrintBuffer(
         if ((column % COLUMN_COUNT) == 0)
         {
             /* Append EOL. */
-            gcmkSTRCAT(buffer + len, gcmSIZEOF(buffer) - len, "\n");
+            gcmkSTRCATSAFE(buffer, gcmSIZEOF(buffer), "\n");
 
             /* Print the string. */
             gcmkOUTPUT_STRING(buffer);
@@ -742,7 +777,7 @@ _PrintBuffer(
     if (column != 0)
     {
         /* Append EOL. */
-        gcmkSTRCAT(buffer + len, gcmSIZEOF(buffer) - len, "\n");
+        gcmkSTRCATSAFE(buffer, gcmSIZEOF(buffer), "\n");
 
         /* Print the string. */
         gcmkOUTPUT_STRING(buffer);
@@ -752,7 +787,7 @@ _PrintBuffer(
     if (command)
     {
         buffer[indent] = '\0';
-        gcmkSTRCAT(buffer, gcmSIZEOF(buffer), "] -- command\n");
+        gcmkSTRCATSAFE(buffer, gcmSIZEOF(buffer), "] -- command\n");
         gcmkOUTPUT_STRING(buffer);
     }
 }
@@ -1285,7 +1320,7 @@ _AppendPrefix(
     item->prefixData = prefixData;
 
     /* Copy argument value. */
-    memcpy(prefixData, Data, gcdPREFIX_SIZE);
+    gcmkMEMCPY(prefixData, Data, gcdPREFIX_SIZE);
 
 #if gcdALIGNBYSIZE
     /* Compute the actual node size. */
@@ -1347,7 +1382,7 @@ _AppendString(
     /* Copy argument value. */
     if (ArgumentSize != 0)
     {
-        memcpy(messageData, Data, ArgumentSize);
+        gcmkMEMCPY(messageData, Data, ArgumentSize);
     }
 
 #if gcdALIGNBYSIZE
@@ -1422,12 +1457,12 @@ _AppendCopy(
     item->messageDataSize = ArgumentSize;
 
     /* Copy the message. */
-    memcpy((gctPOINTER) message, Message, messageLength);
+    gcmkMEMCPY((gctPOINTER) message, Message, messageLength);
 
     /* Copy argument value. */
     if (ArgumentSize != 0)
     {
-        memcpy(messageData, Data, ArgumentSize);
+        gcmkMEMCPY(messageData, Data, ArgumentSize);
     }
 
 #if gcdALIGNBYSIZE
@@ -1505,13 +1540,13 @@ _AppendBuffer(
 #endif
 
     /* Copy prefix data. */
-    memcpy(prefixData, PrefixData, gcdPREFIX_SIZE);
+    gcmkMEMCPY(prefixData, PrefixData, gcdPREFIX_SIZE);
 
     /* Compute the data pointer. */
     data = prefixData + gcdPREFIX_SIZE;
 
     /* Copy argument value. */
-    memcpy(data, Data, DataSize);
+    gcmkMEMCPY(data, Data, DataSize);
 
 #if gcdALIGNBYSIZE
     /* Compute the actual node size. */
@@ -1548,7 +1583,7 @@ _AppendBuffer(
     item->address  = Address;
 
     /* Copy argument value. */
-    memcpy(item + 1, Data, DataSize);
+    gcmkMEMCPY(item + 1, Data, DataSize);
 #endif
 }
 #endif
@@ -1715,9 +1750,9 @@ _Print(
     )
 {
     gcsBUFFERED_OUTPUT_PTR outputBuffer;
-    gcmkDECLARE_LOCK(lockHandle);
+    static gcmkDECLARE_MUTEX(lockHandle);
 
-    gcmkLOCKSECTION(lockHandle);
+    gcmkMUTEX_LOCK(lockHandle);
 
     /* Initialize output buffer list. */
     _InitBuffers();
@@ -1776,7 +1811,7 @@ _Print(
         outputBuffer->indent += 2;
     }
 
-    gcmkUNLOCKSECTION(lockHandle);
+    gcmkMUTEX_UNLOCK(lockHandle);
 }
 
 
@@ -1800,8 +1835,13 @@ extern volatile unsigned g_nQnxInIsrs;
     atomic_sub(&g_nQnxInIsrs, 1); \
 }
 
-#else
+#elif defined(__VXWORKS__)
+#define gcmDEBUGPRINT(ArgumentSize, CopyMessage, Message) \
+{ \
+    printf(Message); \
+}
 
+#else
 #define gcmDEBUGPRINT(ArgumentSize, CopyMessage, Message) \
 { \
     gctARGUMENTS __arguments__; \
@@ -1935,37 +1975,48 @@ void
 gckOS_DumpBuffer(
     IN gckOS Os,
     IN gctPOINTER Buffer,
-    IN gctUINT Size,
+    IN gctSIZE_T Size,
     IN gceDUMP_BUFFER Type,
     IN gctBOOL CopyMessage
     )
 {
+    gctPHYS_ADDR_T physical;
     gctUINT32 address                   = 0;
     gcsBUFFERED_OUTPUT_PTR outputBuffer = gcvNULL;
-    static gctBOOL userLocked;
     gctCHAR *buffer                     = (gctCHAR*)Buffer;
+    gctPOINTER pAllocated               = gcvNULL;
+    gctPOINTER pMapped                  = gcvNULL;
+    gceSTATUS status                    = gcvSTATUS_OK;
 
-    gcmkDECLARE_LOCK(lockHandle);
+    static gcmkDECLARE_MUTEX(lockHandle);
+
+    gcmkMUTEX_LOCK(lockHandle);
 
     /* Request lock when not coming from user,
        or coming from user and not yet locked
           and message is starting with @[. */
-    if (Type == gceDUMP_BUFFER_FROM_USER)
+    if (Type == gcvDUMP_BUFFER_FROM_USER)
     {
+        /* Some format check. */
         if ((Size > 2)
-        && (buffer[0] == '@')
-        && (buffer[1] == '['))
+         && (buffer[0] == '@' || buffer[0] == '#')
+         && (buffer[1] != '[')
+        )
         {
-            /* Beginning of a user dump. */
-            gcmkLOCKSECTION(lockHandle);
-            userLocked = gcvTRUE;
+            gcmkMUTEX_UNLOCK(lockHandle);
+
+            /* No error tolerence in parser, so we stop on error to make noise. */
+            for (;;)
+            {
+                gcmkPRINT(
+                    "[galcore]: %s(%d): Illegal dump message %s\n",
+                    __FUNCTION__, __LINE__,
+                    buffer
+                    );
+
+                gckOS_Delay(Os, 10 * 1000);
+            }
         }
-        /* Else, let it pass through. */
-    }
-    else
-    {
-        gcmkLOCKSECTION(lockHandle);
-        userLocked = gcvFALSE;
     }
 
     if (Buffer != gcvNULL)
@@ -1982,13 +2033,51 @@ gckOS_DumpBuffer(
 #endif
 
         /* Get the physical address of the buffer. */
-        if (Type != gceDUMP_BUFFER_FROM_USER)
+        if (Type != gcvDUMP_BUFFER_FROM_USER)
         {
-            gcmkVERIFY_OK(gckOS_GetPhysicalAddress(Os, Buffer, &address));
+            gcmkVERIFY_OK(gckOS_GetPhysicalAddress(Os, Buffer, &physical));
+            gcmkVERIFY_OK(gckOS_CPUPhysicalToGPUPhysical(Os, physical, &physical));
+            gcmkSAFECASTPHYSADDRT(address, physical);
         }
         else
         {
             address = 0;
+        }
+
+        if (Type == gcvDUMP_BUFFER_USER)
+        {
+            gctBOOL needCopy = gcvTRUE;
+
+            gcmkONERROR(gckOS_QueryNeedCopy(Os, 0, &needCopy));
+
+            if (needCopy)
+            {
+                gcmkONERROR(gckOS_Allocate(
+                    Os,
+                    Size,
+                    &pAllocated
+                    ));
+
+                gcmkONERROR(gckOS_CopyFromUserData(
+                    Os,
+                    pAllocated,
+                    Buffer,
+                    Size
+                    ));
+
+                Buffer = pAllocated;
+            }
+            else
+            {
+                gcmkONERROR(gckOS_MapUserPointer(
+                    Os,
+                    Buffer,
+                    Size,
+                    &pMapped
+                    ));
+
+                Buffer = pMapped;
+            }
         }
 
 #if gcdHAVEPREFIX
@@ -2011,12 +2100,9 @@ gckOS_DumpBuffer(
         }
 #else
         /* Print/schedule the buffer. */
-        if (Type == gceDUMP_BUFFER_FROM_USER)
+        if (Type == gcvDUMP_BUFFER_FROM_USER)
         {
-            gcdOUTPUTSTRING(
-                outputBuffer, outputBuffer->indent,
-                Buffer, 0, gcvNULL
-                );
+            gckOS_CopyPrint(Buffer);
         }
         else
         {
@@ -2028,25 +2114,16 @@ gckOS_DumpBuffer(
 #endif
     }
 
-    /* Unlock when not coming from user,
-       or coming from user and not yet locked. */
-    if (userLocked)
+OnError:
+    gcmkMUTEX_UNLOCK(lockHandle);
+
+    if (pAllocated)
     {
-        if ((Size > 4)
-        && (buffer[0] == ']')
-        && (buffer[1] == ' ')
-        && (buffer[2] == '-')
-        && (buffer[3] == '-'))
-        {
-            /* End of a user dump. */
-            gcmkUNLOCKSECTION(lockHandle);
-            userLocked = gcvFALSE;
-        }
-        /* Else, let it pass through, don't unlock. */
+        gcmkVERIFY_OK(gcmkOS_SAFE_FREE(Os, pAllocated));
     }
-    else
+    else if (pMapped)
     {
-        gcmkUNLOCKSECTION(lockHandle);
+        gckOS_UnmapUserPointer(Os, buffer, Size, pMapped);
     }
 }
 
@@ -2547,8 +2624,6 @@ gckOS_DebugStatus2Name(
         return "gcvSTATUS_TOO_MANY_ATTRIBUTES";
     case gcvSTATUS_TOO_MANY_UNIFORMS:
         return "gcvSTATUS_TOO_MANY_UNIFORMS";
-    case gcvSTATUS_TOO_MANY_SAMPLER:
-        return "gcvSTATUS_TOO_MANY_SAMPLER";
     case gcvSTATUS_TOO_MANY_VARYINGS:
         return "gcvSTATUS_TOO_MANY_VARYINGS";
     case gcvSTATUS_UNDECLARED_VARYING:
@@ -2587,13 +2662,24 @@ gckOS_DebugStatus2Name(
         return "gcvSTATUS_NOT_SUPPORT_CL";
     case gcvSTATUS_NOT_SUPPORT_INTEGER:
         return "gcvSTATUS_NOT_SUPPORT_INTEGER";
+    case gcvSTATUS_UNIFORM_TYPE_MISMATCH:
+        return "gcvSTATUS_UNIFORM_TYPE_MISMATCH";
+    case gcvSTATUS_MISSING_PRIMITIVE_TYPE:
+        return "gcvSTATUS_MISSING_PRIMITIVE_TYPE";
+    case gcvSTATUS_MISSING_OUTPUT_VERTEX_COUNT:
+        return "gcvSTATUS_MISSING_OUTPUT_VERTEX_COUNT";
+    case gcvSTATUS_NON_INVOCATION_ID_AS_INDEX:
+        return "gcvSTATUS_NON_INVOCATION_ID_AS_INDEX";
+    case gcvSTATUS_INPUT_ARRAY_SIZE_MISMATCH:
+        return "gcvSTATUS_INPUT_ARRAY_SIZE_MISMATCH";
+    case gcvSTATUS_OUTPUT_ARRAY_SIZE_MISMATCH:
+        return "gcvSTATUS_OUTPUT_ARRAY_SIZE_MISMATCH";
 
     /* Compiler errors. */
     case gcvSTATUS_COMPILER_FE_PREPROCESSOR_ERROR:
         return "gcvSTATUS_COMPILER_FE_PREPROCESSOR_ERROR";
     case gcvSTATUS_COMPILER_FE_PARSER_ERROR:
         return "gcvSTATUS_COMPILER_FE_PARSER_ERROR";
-
     default:
         return "nil";
     }

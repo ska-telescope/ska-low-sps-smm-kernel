@@ -1,5 +1,6 @@
 /*
- * Copyright 2005-2014 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2005-2015 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2019 NXP
  */
 
 /*
@@ -32,6 +33,7 @@
 #include <linux/platform_device.h>
 #include <linux/poll.h>
 #include <linux/sched.h>
+#include <linux/sched/types.h>
 #include <linux/sched/rt.h>
 #include <linux/slab.h>
 #include <linux/spinlock.h>
@@ -414,7 +416,6 @@ unsigned int fmt_to_bpp(unsigned int pixelformat)
 	u32 bpp;
 
 	switch (pixelformat) {
-	case IPU_PIX_FMT_GENERIC_16:
 	case IPU_PIX_FMT_RGB565:
 	/*interleaved 422*/
 	case IPU_PIX_FMT_YUYV:
@@ -507,9 +508,21 @@ static int soc_max_in_width(u32 is_vdoa)
 	return is_vdoa ? 8192 : 4096;
 }
 
-static int soc_max_vdi_in_width(void)
+static int soc_max_vdi_in_width(struct ipu_soc *ipu)
 {
-	return IPU_MAX_VDI_IN_WIDTH;
+	int i;
+
+	if (!ipu) {
+		for (i = 0; i < max_ipu_no; i++) {
+			ipu = ipu_get_soc(i);
+			if (!IS_ERR_OR_NULL(ipu))
+				break;
+		}
+
+		if (i == max_ipu_no)
+			return 720;
+	}
+	return IPU_MAX_VDI_IN_WIDTH(ipu->devtype);
 }
 static int soc_max_in_height(void)
 {
@@ -627,105 +640,6 @@ static void dump_task_info(struct ipu_task_entry *t)
 	dev_dbg(t->dev, "[0x%p]\tROT_MODE = 0x%x\n", (void *)t, ROT_MODE);
 	dev_dbg(t->dev, "[0x%p]\tVDI_MODE = 0x%x\n", (void *)t, VDI_MODE);
 	dev_dbg(t->dev, "[0x%p]\tTask_no = 0x%x\n\n\n", (void *)t, t->task_no);
-}
-
-static void dump_task_info2(struct ipu_task_entry *t)
-{
-	dev_err(t->dev, "[0x%p]input:\n", (void *)t);
-	dev_err(t->dev, "[0x%p]\tformat = 0x%x\n", (void *)t, t->input.format);
-	dev_err(t->dev, "[0x%p]\twidth = %d\n", (void *)t, t->input.width);
-	dev_err(t->dev, "[0x%p]\theight = %d\n", (void *)t, t->input.height);
-	dev_err(t->dev, "[0x%p]\tcrop.w = %d\n", (void *)t, t->input.crop.w);
-	dev_err(t->dev, "[0x%p]\tcrop.h = %d\n", (void *)t, t->input.crop.h);
-	dev_err(t->dev, "[0x%p]\tcrop.pos.x = %d\n",
-			(void *)t, t->input.crop.pos.x);
-	dev_err(t->dev, "[0x%p]\tcrop.pos.y = %d\n",
-			(void *)t, t->input.crop.pos.y);
-	dev_err(t->dev, "[0x%p]input buffer:\n", (void *)t);
-	dev_err(t->dev, "[0x%p]\tpaddr = 0x%x\n", (void *)t, t->input.paddr);
-	dev_err(t->dev, "[0x%p]\ti_off = 0x%x\n", (void *)t, t->set.i_off);
-	dev_err(t->dev, "[0x%p]\ti_uoff = 0x%x\n", (void *)t, t->set.i_uoff);
-	dev_err(t->dev, "[0x%p]\ti_voff = 0x%x\n", (void *)t, t->set.i_voff);
-	dev_err(t->dev, "[0x%p]\tistride = %d\n", (void *)t, t->set.istride);
-	if (t->input.deinterlace.enable) {
-		dev_err(t->dev, "[0x%p]deinterlace enabled with:\n", (void *)t);
-		if (t->input.deinterlace.motion != HIGH_MOTION) {
-			dev_err(t->dev, "[0x%p]\tlow/medium motion\n", (void *)t);
-			dev_err(t->dev, "[0x%p]\tpaddr_n = 0x%x\n",
-				(void *)t, t->input.paddr_n);
-		} else
-			dev_err(t->dev, "[0x%p]\thigh motion\n", (void *)t);
-	}
-
-	dev_err(t->dev, "[0x%p]output:\n", (void *)t);
-	dev_err(t->dev, "[0x%p]\tformat = 0x%x\n", (void *)t, t->output.format);
-	dev_err(t->dev, "[0x%p]\twidth = %d\n", (void *)t, t->output.width);
-	dev_err(t->dev, "[0x%p]\theight = %d\n", (void *)t, t->output.height);
-	dev_err(t->dev, "[0x%p]\tcrop.w = %d\n", (void *)t, t->output.crop.w);
-	dev_err(t->dev, "[0x%p]\tcrop.h = %d\n", (void *)t, t->output.crop.h);
-	dev_err(t->dev, "[0x%p]\tcrop.pos.x = %d\n",
-			(void *)t, t->output.crop.pos.x);
-	dev_err(t->dev, "[0x%p]\tcrop.pos.y = %d\n",
-			(void *)t, t->output.crop.pos.y);
-	dev_err(t->dev, "[0x%p]\trotate = %d\n", (void *)t, t->output.rotate);
-	dev_err(t->dev, "[0x%p]output buffer:\n", (void *)t);
-	dev_err(t->dev, "[0x%p]\tpaddr = 0x%x\n", (void *)t, t->output.paddr);
-	dev_err(t->dev, "[0x%p]\to_off = 0x%x\n", (void *)t, t->set.o_off);
-	dev_err(t->dev, "[0x%p]\to_uoff = 0x%x\n", (void *)t, t->set.o_uoff);
-	dev_err(t->dev, "[0x%p]\to_voff = 0x%x\n", (void *)t, t->set.o_voff);
-	dev_err(t->dev, "[0x%p]\tostride = %d\n", (void *)t, t->set.ostride);
-
-	if (t->overlay_en) {
-		dev_err(t->dev, "[0x%p]overlay:\n", (void *)t);
-		dev_err(t->dev, "[0x%p]\tformat = 0x%x\n",
-				(void *)t, t->overlay.format);
-		dev_err(t->dev, "[0x%p]\twidth = %d\n",
-				(void *)t, t->overlay.width);
-		dev_err(t->dev, "[0x%p]\theight = %d\n",
-				(void *)t, t->overlay.height);
-		dev_err(t->dev, "[0x%p]\tcrop.w = %d\n",
-				(void *)t, t->overlay.crop.w);
-		dev_err(t->dev, "[0x%p]\tcrop.h = %d\n",
-				(void *)t, t->overlay.crop.h);
-		dev_err(t->dev, "[0x%p]\tcrop.pos.x = %d\n",
-				(void *)t, t->overlay.crop.pos.x);
-		dev_err(t->dev, "[0x%p]\tcrop.pos.y = %d\n",
-				(void *)t, t->overlay.crop.pos.y);
-		dev_err(t->dev, "[0x%p]overlay buffer:\n", (void *)t);
-		dev_err(t->dev, "[0x%p]\tpaddr = 0x%x\n",
-				(void *)t, t->overlay.paddr);
-		dev_err(t->dev, "[0x%p]\tov_off = 0x%x\n",
-				(void *)t, t->set.ov_off);
-		dev_err(t->dev, "[0x%p]\tov_uoff = 0x%x\n",
-				(void *)t, t->set.ov_uoff);
-		dev_err(t->dev, "[0x%p]\tov_voff = 0x%x\n",
-				(void *)t, t->set.ov_voff);
-		dev_err(t->dev, "[0x%p]\tovstride = %d\n",
-				(void *)t, t->set.ovstride);
-		if (t->overlay.alpha.mode == IPU_ALPHA_MODE_LOCAL) {
-			dev_err(t->dev, "[0x%p]local alpha enabled with:\n",
-					(void *)t);
-			dev_err(t->dev, "[0x%p]\tpaddr = 0x%x\n",
-					(void *)t, t->overlay.alpha.loc_alp_paddr);
-			dev_err(t->dev, "[0x%p]\tov_alpha_off = 0x%x\n",
-					(void *)t, t->set.ov_alpha_off);
-			dev_err(t->dev, "[0x%p]\tov_alpha_stride = %d\n",
-					(void *)t, t->set.ov_alpha_stride);
-		} else
-			dev_err(t->dev, "[0x%p]globle alpha enabled with value 0x%x\n",
-					(void *)t, t->overlay.alpha.gvalue);
-		if (t->overlay.colorkey.enable)
-			dev_err(t->dev, "[0x%p]colorkey enabled with value 0x%x\n",
-					(void *)t, t->overlay.colorkey.value);
-	}
-
-	dev_err(t->dev, "[0x%p]want task_id = %d\n", (void *)t, t->task_id);
-	dev_err(t->dev, "[0x%p]want task mode is 0x%x\n",
-				(void *)t, t->set.mode);
-	dev_err(t->dev, "[0x%p]\tIC_MODE = 0x%x\n", (void *)t, IC_MODE);
-	dev_err(t->dev, "[0x%p]\tROT_MODE = 0x%x\n", (void *)t, ROT_MODE);
-	dev_err(t->dev, "[0x%p]\tVDI_MODE = 0x%x\n", (void *)t, VDI_MODE);
-	dev_err(t->dev, "[0x%p]\tTask_no = 0x%x\n\n\n", (void *)t, t->task_no);
 }
 
 static void dump_check_err(struct device *dev, int err)
@@ -915,7 +829,6 @@ static void update_offset(unsigned int fmt,
 		break;
 	}
 	*stride = width * bytes_per_pixel(fmt);
-	*off &= ~0x7;
 }
 
 static int update_split_setting(struct ipu_task_entry *t, bool vdi_split)
@@ -953,7 +866,7 @@ static int update_split_setting(struct ipu_task_entry *t, bool vdi_split)
 		right_stripe.output_column = ow / 2;
 
 		if (vdi_split)
-			max_width = soc_max_vdi_in_width();
+			max_width = soc_max_vdi_in_width(t->ipu);
 		else
 			max_width = soc_max_out_width();
 		ret = ipu_calc_stripes_sizes(iw,
@@ -1249,7 +1162,8 @@ static int check_task(struct ipu_task_entry *t)
 		if (t->output.crop.h > soc_max_out_height())
 			t->set.split_mode |= UD_SPLIT;
 		if (!t->set.split_mode && (t->set.mode & VDI_MODE) &&
-				(t->input.crop.w > soc_max_vdi_in_width())) {
+				(t->input.crop.w >
+				 soc_max_vdi_in_width(t->ipu))) {
 			t->set.split_mode |= RL_SPLIT;
 			vdi_split = true;
 		}
@@ -1303,14 +1217,9 @@ static int prepare_task(struct ipu_task_entry *t)
 {
 	int ret = 0;
 
-	printk(KERN_DEBUG "XXXXXXXXXXXXXXXXXXXXXXXXX prepare_task\n");
-	
 	ret = check_task(t);
-	if (ret > IPU_CHECK_ERR_MIN) {
-		dump_task_info2(t);
-		dev_err(t->dev, "prepare_task: check_task error: %d (%d)\n", ret, IPU_CHECK_ERR_SPLIT_WITH_ROT);
+	if (ret > IPU_CHECK_ERR_MIN)
 		return -EINVAL;
-	}
 
 	if (t->set.mode & VDI_MODE) {
 		t->task_id = IPU_TASK_ID_VF;
@@ -1480,6 +1389,13 @@ static void put_vdoa_ipu_res(struct ipu_task_entry *tsk, int vdoa_only)
 		}
 	}
 
+	if (tsk->ipu_id != 0 && tsk->ipu_id != 1) {
+		dev_err(tsk->dev,
+			"%s:invalid ipu id, no:0x%x, rel_vdoa:%d, rel_ipu:%d\n",
+			 __func__, tsk->task_no, rel_vdoa, rel_ipu);
+		goto out;
+	}
+
 	tbl->used[tsk->ipu_id][tsk->task_id - 1] = 0;
 	rel_ipu = 1;
 	ret = atomic_inc_return(&tsk->res_free);
@@ -1573,8 +1489,6 @@ int create_split_child_task(struct ipu_split_task *sp_task)
 	int ret = 0;
 	struct ipu_task_entry *tsk;
 
-	printk(KERN_DEBUG "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX create_split_child_task\n");
-	
 	tsk = create_task_entry(&sp_task->task);
 	if (IS_ERR(tsk))
 		return PTR_ERR(tsk);
@@ -2796,9 +2710,6 @@ static void do_task(struct ipu_task_entry *t)
 	uint32_t busy;
 	struct ipu_soc *ipu = t->ipu;
 
-	printk(KERN_DEBUG "XXXXXXXXXXXXXXXXXXXXXXXXX do_task\n");
-
-	
 	CHECK_PERF(&t->ts_dotask);
 
 	if (!ipu) {
@@ -3146,7 +3057,8 @@ static void get_res_do_task(struct ipu_task_entry *t)
 			do_task_vdoa_only(t);
 		else if ((IPU_PIX_FMT_TILED_NV12F == t->input.format) &&
 				(t->set.mode & VDOA_BAND_MODE) &&
-				(t->input.crop.w > soc_max_vdi_in_width()))
+				(t->input.crop.w >
+				 soc_max_vdi_in_width(t->ipu)))
 			do_task_vdoa_vdi(t);
 		else
 			do_task(t);
@@ -3397,10 +3309,6 @@ static int ipu_task_thread(void *argv)
 				/* let the parent thread do the first sp_task */
 				/* FIXME: ensure the correct sequence for split
 					4size: 5/6->9/a*/
-				if (!sp_tsk0)
-					dev_err(tsk->dev,
-					"ERR: no-0x%x,can not get split_tsk0\n",
-					tsk->task_no);
 				wake_up_interruptible(&thread_waitq);
 				get_res_do_task(sp_tsk0);
 				dev_dbg(sp_tsk0->dev,
@@ -3479,8 +3387,6 @@ int ipu_queue_task(struct ipu_task *task)
 	u32 tmp_task_no;
 	DECLARE_PERF_VAR;
 
-	printk(KERN_DEBUG "XXXXXXXXXXXXXXXXXXXXXXXXXXXX ipu_queue_task");
-	
 	tsk = create_task_entry(task);
 	if (IS_ERR(tsk))
 		return PTR_ERR(tsk);
@@ -3597,8 +3503,6 @@ static long mxc_ipu_ioctl(struct file *file,
 		{
 			struct ipu_task task;
 
-			printk(KERN_DEBUG "XXXXXXXXXXXXXXXXXXXXX CHE 2 COGLIONI\n");
-			
 			if (copy_from_user
 					(&task, (struct ipu_task *) arg,
 					 sizeof(struct ipu_task)))
@@ -3615,8 +3519,10 @@ static long mxc_ipu_ioctl(struct file *file,
 			if (mem == NULL)
 				return -ENOMEM;
 
-			if (get_user(size, argp))
+			if (get_user(size, argp)) {
+				kfree(mem);
 				return -EFAULT;
+			}
 
 			mem->size = PAGE_ALIGN(size);
 
@@ -3632,11 +3538,20 @@ static long mxc_ipu_ioctl(struct file *file,
 			list_add(&mem->list, &ipu_alloc_list);
 			mutex_unlock(&ipu_alloc_lock);
 
+			if (put_user(mem->phy_addr, argp)) {
+				mutex_lock(&ipu_alloc_lock);
+				list_del(&mem->list);
+				mutex_unlock(&ipu_alloc_lock);
+				dma_free_coherent(ipu_dev,
+						  mem->size,
+						  mem->cpu_addr,
+						  mem->phy_addr);
+				kfree(mem);
+				return -EFAULT;
+			}
+
 			dev_dbg(ipu_dev, "allocated %d bytes @ 0x%08X\n",
 				mem->size, mem->phy_addr);
-
-			if (put_user(mem->phy_addr, argp))
-				return -EFAULT;
 
 			break;
 		}

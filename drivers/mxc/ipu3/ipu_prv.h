@@ -1,5 +1,5 @@
 /*
- * Copyright 2005-2013 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2005-2016 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -17,6 +17,7 @@
 #include <linux/device.h>
 #include <linux/fsl_devices.h>
 #include <linux/interrupt.h>
+#include <linux/ipu-v3.h>
 #include <linux/types.h>
 
 #define MXC_IPU_MAX_NUM		2
@@ -27,6 +28,15 @@ extern int dmfc_type_setup;
 
 #define IDMA_CHAN_INVALID	0xFF
 #define HIGH_RESOLUTION_WIDTH	1024
+
+enum ipuv3_type {
+	IPUv3D,		/* i.MX37 */
+	IPUv3EX,	/* i.MX51 */
+	IPUv3M,		/* i.MX53 */
+	IPUv3H,		/* i.MX6Q/SDL */
+};
+
+#define IPU_MAX_VDI_IN_WIDTH(type)	({ (type) >= IPUv3M ? 968 : 720; })
 
 struct ipu_irq_node {
 	irqreturn_t(*handler) (int, void *);	/*!< the ISR */
@@ -44,35 +54,20 @@ enum csc_type_t {
 	CSC_NUM
 };
 
-enum imx_ipu_type {
-	IMX6Q_IPU,
-};
-
-struct ipu_pltfm_data {
-	u32 id;
-	u32 devtype;
-	int (*init) (int);
-	void (*pg) (int);
-
-	/*
-	 * Bypass reset to avoid display channel being
-	 * stopped by probe since it may starts to work
-	 * in bootloader.
-	 */
-	bool bypass_reset;
-};
-
 struct ipu_soc {
+	unsigned int id;
+	unsigned int devtype;
 	bool online;
-	struct ipu_pltfm_data *pdata;
 
 	/*clk*/
 	struct clk *ipu_clk;
 	struct clk *di_clk[2];
 	struct clk *di_clk_sel[2];
 	struct clk *pixel_clk[2];
+	bool pixel_clk_en[2];
 	struct clk *pixel_clk_sel[2];
 	struct clk *csi_clk[2];
+	struct clk *prg_clk;
 
 	/*irq*/
 	int irq_sync;
@@ -92,7 +87,6 @@ struct ipu_soc {
 	void __iomem *csi_reg[2];
 	void __iomem *cpmem_base;
 	void __iomem *tpmem_base;
-	void __iomem *disp_base[2];
 	void __iomem *vdi_reg;
 
 	struct device *dev;
@@ -100,8 +94,8 @@ struct ipu_soc {
 	ipu_channel_t csi_channel[2];
 	ipu_channel_t using_ic_dirct_ch;
 	unsigned char dc_di_assignment[10];
-	bool sec_chan_en[24];
-	bool thrd_chan_en[24];
+	bool sec_chan_en[IPU_MAX_CH];
+	bool thrd_chan_en[IPU_MAX_CH];
 	bool chan_is_interlaced[52];
 	uint32_t channel_init_mask;
 	uint32_t channel_enable_mask;
@@ -143,6 +137,20 @@ struct ipu_soc {
 	int	vdoa_en;
 	struct task_struct *thread[2];
 
+	/*
+	 * Bypass reset to avoid display channel being
+	 * stopped by probe since it may starts to work
+	 * in bootloader.
+	 */
+	bool bypass_reset;
+
+	unsigned int ch0123_axi;
+	unsigned int ch23_axi;
+	unsigned int ch27_axi;
+	unsigned int ch28_axi;
+	unsigned int normal_axi;
+
+	bool smfc_idmac_12bit_3planar_bs_fixup;	/* workaround little stripes */
 };
 
 struct ipu_channel {
@@ -158,6 +166,11 @@ enum ipu_dmfc_type {
 	DMFC_HIGH_RESOLUTION_DP,
 	DMFC_HIGH_RESOLUTION_ONLY_DP,
 };
+
+static inline int _ipu_is_smfc_chan(uint32_t dma_chan)
+{
+	return dma_chan <= 3;
+}
 
 static inline u32 ipu_cm_read(struct ipu_soc *ipu, unsigned offset)
 {

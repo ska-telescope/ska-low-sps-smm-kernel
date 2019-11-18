@@ -13,7 +13,7 @@
  * Rahul Trivedi: Codito Technologies 2004
  */
 
-#include <linux/sched.h>
+#include <linux/sched/signal.h>
 #include <linux/kdebug.h>
 #include <linux/uaccess.h>
 #include <linux/ptrace.h>
@@ -42,7 +42,7 @@ void die(const char *str, struct pt_regs *regs, unsigned long address)
  *  -for kernel, chk if due to copy_(to|from)_user, otherwise die()
  */
 static noinline int
-handle_exception(const char *str, struct pt_regs *regs, siginfo_t *info)
+unhandled_exception(const char *str, struct pt_regs *regs, siginfo_t *info)
 {
 	if (user_mode(regs)) {
 		struct task_struct *tsk = current;
@@ -71,7 +71,7 @@ int name(unsigned long address, struct pt_regs *regs) \
 		.si_code  = sicode,		\
 		.si_addr = (void __user *)address,	\
 	};					\
-	return handle_exception(str, regs, &info);\
+	return unhandled_exception(str, regs, &info);\
 }
 
 /*
@@ -80,7 +80,7 @@ int name(unsigned long address, struct pt_regs *regs) \
 DO_ERROR_INFO(SIGILL, "Priv Op/Disabled Extn", do_privilege_fault, ILL_PRVOPC)
 DO_ERROR_INFO(SIGILL, "Invalid Extn Insn", do_extension_fault, ILL_ILLOPC)
 DO_ERROR_INFO(SIGILL, "Illegal Insn (or Seq)", insterror_is_error, ILL_ILLOPC)
-DO_ERROR_INFO(SIGBUS, "Invalid Mem Access", do_memory_error, BUS_ADRERR)
+DO_ERROR_INFO(SIGBUS, "Invalid Mem Access", __weak do_memory_error, BUS_ADRERR)
 DO_ERROR_INFO(SIGTRAP, "Breakpoint Set", trap_is_brkpt, TRAP_BRKPT)
 DO_ERROR_INFO(SIGBUS, "Misaligned Access", do_misaligned_error, BUS_ADRALN)
 
@@ -103,7 +103,7 @@ int do_misaligned_access(unsigned long address, struct pt_regs *regs,
  */
 void do_machine_check_fault(unsigned long address, struct pt_regs *regs)
 {
-	die("Machine Check Exception", regs, address);
+	die("Unhandled Machine Check Exception", regs, address);
 }
 
 

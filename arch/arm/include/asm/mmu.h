@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 #ifndef __ARM_MMU_H
 #define __ARM_MMU_H
 
@@ -11,6 +12,9 @@ typedef struct {
 #endif
 	unsigned int	vmalloc_seq;
 	unsigned long	sigpage;
+#ifdef CONFIG_VDSO
+	unsigned long	vdso;
+#endif
 } mm_context_t;
 
 #ifdef CONFIG_CPU_HAS_ASID

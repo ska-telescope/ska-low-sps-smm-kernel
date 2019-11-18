@@ -34,7 +34,6 @@
 #include <asm/machdep.h>
 #include <asm/pmac_feature.h>
 #include <asm/prom.h>
-#include <asm/pci-bridge.h>
 #endif /* CONFIG_PPC_PMAC */
 
 /* from radeon_legacy_encoder.c */
@@ -116,7 +115,7 @@ enum radeon_combios_connector {
 	CONNECTOR_UNSUPPORTED_LEGACY
 };
 
-const int legacy_connector_convert[] = {
+static const int legacy_connector_convert[] = {
 	DRM_MODE_CONNECTOR_Unknown,
 	DRM_MODE_CONNECTOR_DVID,
 	DRM_MODE_CONNECTOR_VGA,
@@ -3394,6 +3393,13 @@ void radeon_combios_asic_init(struct drm_device *dev)
 	    rdev->pdev->subsystem_vendor == 0x103c &&
 	    rdev->pdev->subsystem_device == 0x280a)
 		return;
+	/* quirk for rs4xx Toshiba Sattellite L20-183 latop to make it resume
+	 * - it hangs on resume inside the dynclk 1 table.
+	 */
+	if (rdev->family == CHIP_RS400 &&
+	    rdev->pdev->subsystem_vendor == 0x1179 &&
+	    rdev->pdev->subsystem_device == 0xff31)
+	        return;
 
 	/* DYN CLK 1 */
 	table = combios_get_table_offset(dev, COMBIOS_DYN_CLK_1_TABLE);

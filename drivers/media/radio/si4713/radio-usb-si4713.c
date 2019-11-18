@@ -31,7 +31,7 @@
 #include <media/v4l2-device.h>
 #include <media/v4l2-ioctl.h>
 #include <media/v4l2-event.h>
-#include <media/si4713.h>
+#include <linux/platform_data/media/si4713.h>
 
 #include "si4713.h"
 
@@ -49,7 +49,7 @@ MODULE_LICENSE("GPL v2");
 #define USB_RESP_TIMEOUT		50000
 
 /* USB Device ID List */
-static struct usb_device_id usb_si4713_usb_device_table[] = {
+static const struct usb_device_id usb_si4713_usb_device_table[] = {
 	{USB_DEVICE_AND_INTERFACE_INFO(USB_SI4713_VENDOR, USB_SI4713_PRODUCT,
 							USB_CLASS_HID, 0, 0) },
 	{ }						/* Terminating entry */
@@ -223,7 +223,7 @@ struct si4713_start_seq_table {
  * (0x03): Get serial number of the board (Response : CB000-00-00)
  * (0x06, 0x03, 0x03, 0x08, 0x01, 0x0f) : Get Component revision
  */
-static struct si4713_start_seq_table start_seq[] = {
+static const struct si4713_start_seq_table start_seq[] = {
 
 	{ 1, { 0x03 } },
 	{ 2, { 0x32, 0x7f } },
@@ -261,7 +261,7 @@ static int si4713_start_seq(struct si4713_usb_device *radio)
 
 	for (i = 0; i < ARRAY_SIZE(start_seq); i++) {
 		int len = start_seq[i].len;
-		u8 *payload = start_seq[i].payload;
+		const u8 *payload = start_seq[i].payload;
 
 		memcpy(radio->buffer + 1, payload, len);
 		memset(radio->buffer + len + 1, 0, BUFFER_LENGTH - 1 - len);
@@ -402,14 +402,14 @@ static u32 si4713_functionality(struct i2c_adapter *adapter)
 	return I2C_FUNC_I2C | I2C_FUNC_SMBUS_EMUL;
 }
 
-static struct i2c_algorithm si4713_algo = {
+static const struct i2c_algorithm si4713_algo = {
 	.master_xfer   = si4713_transfer,
 	.functionality = si4713_functionality,
 };
 
 /* This name value shows up in the sysfs filename associated
 		with this I2C adapter */
-static struct i2c_adapter si4713_i2c_adapter_template = {
+static const struct i2c_adapter si4713_i2c_adapter_template = {
 	.name   = "si4713-i2c",
 	.owner  = THIS_MODULE,
 	.algo   = &si4713_algo,
@@ -492,7 +492,6 @@ static int usb_si4713_probe(struct usb_interface *intf,
 	radio->vdev.vfl_dir = VFL_DIR_TX;
 
 	video_set_drvdata(&radio->vdev, radio);
-	set_bit(V4L2_FL_USE_FH_PRIO, &radio->vdev.flags);
 
 	retval = video_register_device(&radio->vdev, VFL_TYPE_RADIO, -1);
 	if (retval < 0) {

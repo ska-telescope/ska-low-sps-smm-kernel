@@ -1,19 +1,13 @@
 /*
- * Copyright (C) 2012-2013 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright (C) 2012-2015 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2018 NXP
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
-
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
-
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * The code contained herein is licensed under the GNU General Public
+ * License. You may obtain a copy of the GNU General Public License
+ * Version 2 or later at the following locations:
+ *
+ * http://www.opensource.org/licenses/gpl-license.html
+ * http://www.gnu.org/copyleft/gpl.html
  */
 #include <linux/clk.h>
 #include <linux/err.h>
@@ -410,7 +404,7 @@ static int __init vdoa_iram_size_setup(char *options)
 {
 	int ret;
 
-	ret = strict_strtoul(options, 0, &iram_size);
+	ret = kstrtoul(options, 0, &iram_size);
 	if (ret)
 		iram_size = 0;
 	else
@@ -451,7 +445,7 @@ static int vdoa_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	vdoa->dev = dev;
 
-	vdoa->reg_base = devm_request_and_ioremap(&pdev->dev, res);
+	vdoa->reg_base = devm_ioremap_resource(&pdev->dev, res);
 	if (!vdoa->reg_base)
 		return -EBUSY;
 
@@ -470,7 +464,7 @@ static int vdoa_probe(struct platform_device *pdev)
 		return PTR_ERR(vdoa->vdoa_clk);
 	}
 
-	vdoa->iram_pool = of_get_named_gen_pool(np, "iram", 0);
+	vdoa->iram_pool = of_gen_pool_get(np, "iram", 0);
 	if (!vdoa->iram_pool) {
 		dev_err(&pdev->dev, "iram pool not available\n");
 		return -ENOMEM;
@@ -535,7 +529,7 @@ static void __exit vdoa_cleanup(void)
 	platform_driver_unregister(&vdoa_driver);
 }
 
-module_init(vdoa_init);
+subsys_initcall(vdoa_init);
 module_exit(vdoa_cleanup);
 
 MODULE_AUTHOR("Freescale Semiconductor, Inc.");

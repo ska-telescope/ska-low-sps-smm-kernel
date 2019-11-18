@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
  * Etrax general port I/O device
  *
@@ -399,7 +400,7 @@ out:
 /* Main device API. ioctl's to read/set/clear bits, as well as to
  * set alarms to wait for using a subsequent select().
  */
-unsigned long inline setget_input(struct gpio_private *priv, unsigned long arg)
+inline unsigned long setget_input(struct gpio_private *priv, unsigned long arg)
 {
 	/* Set direction 0=unchanged 1=input,
 	 * return mask with 1=input */
@@ -450,7 +451,7 @@ unsigned long inline setget_input(struct gpio_private *priv, unsigned long arg)
 	return dir_g_in_bits;
 } /* setget_input */
 
-unsigned long inline setget_output(struct gpio_private *priv, unsigned long arg)
+inline unsigned long setget_output(struct gpio_private *priv, unsigned long arg)
 {
 	if (USE_PORTS(priv)) {
 		*priv->dir = *priv->dir_shadow |=
@@ -833,8 +834,8 @@ static int __init gpio_init(void)
 	printk(KERN_INFO "ETRAX 100LX GPIO driver v2.5, (c) 2001-2008 "
 		"Axis Communications AB\n");
 	/* We call etrax_gpio_wake_up_check() from timer interrupt and
-	 * from cpu_idle() in kernel/process.c
-	 * The check in cpu_idle() reduces latency from ~15 ms to ~6 ms
+	 * from default_idle() in kernel/process.c
+	 * The check in default_idle() reduces latency from ~15 ms to ~6 ms
 	 * in some tests.
 	 */
 	res = request_irq(TIMER0_IRQ_NBR, gpio_poll_timer_interrupt,

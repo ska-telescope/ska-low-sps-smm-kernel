@@ -22,6 +22,7 @@
 
 #ifndef __ASSEMBLY__
 #include <asm/io.h>
+#include <soc/imx/revision.h>
 #endif
 #include <asm/sizes.h>
 
@@ -89,32 +90,34 @@
  *	AIPS1	0x53f00000+0x100000	->	0xf5700000+0x100000
  *	AIPS2	0x63f00000+0x100000	->	0xf5300000+0x100000
  * mx6q:
- *	SCU	0x00a00000+0x004000	->	0xf4a00000+0x004000
+ *	SCU	0x00a00000+0x004000	->	0xf4000000+0x004000
  *	CCM	0x020c4000+0x004000	->	0xf42c4000+0x004000
  *	ANATOP	0x020c8000+0x004000	->	0xf42c8000+0x004000
- *	UART4	0x021f0000+0x004000	->	0xf43f0000+0x004000
- */
-#define IMX_IO_P2V(x)   (			\
-		(0xf4000000 +			\
-		(((x) & 0x50000000) >> 4) +	\
-		(((x) & 0x0a000000) >> 4) +	\
-		(((x) & 0x00ffffff))))
+ *	UART4	0x021f0000+0x004000	->	0xf42f0000+0x004000
+ * mx7d:
+ *     CCM     0x30380000+0x010000     ->      0xf5380000+0x010000
+ *     ANATOP  0x30360000+0x010000     ->      0xf5360000+0x010000
+ *     UART1   0x30860000+0x010000     ->      0xf5860000+0x010000
+*/
+#define IMX_IO_P2V(x)	(						\
+			(0xf4000000 +					\
+			(((x) & 0x50000000) >> 4) +			\
+			(((x) & 0x0a000000) >> 4) +			\
+			(((x) & 0x00ffffff))))
 
 #define IMX_IO_ADDRESS(x)	IOMEM(IMX_IO_P2V(x))
 
 #include "mxc.h"
 
-#include "mx51.h"
-#include "mx53.h"
 #include "mx3x.h"
 #include "mx31.h"
 #include "mx35.h"
 #include "mx2x.h"
 #include "mx21.h"
 #include "mx27.h"
-#include "mx1.h"
-#include "mx25.h"
 #include "mx6.h"
+#include "mx7.h"
+#include "mx7ulp.h"
 
 #define imx_map_entry(soc, name, _type)	{				\
 	.virtual = soc ## _IO_P2V(soc ## _ ## name ## _BASE_ADDR),	\
@@ -123,7 +126,7 @@
 	.type = _type,							\
 }
 
-/* There's a off-by-one betweem the gpio bank number and the gpiochip */
+/* There's an off-by-one between the gpio bank number and the gpiochip */
 /* range e.g. GPIO_1_5 is gpio 5 under linux */
 #define IMX_GPIO_NR(bank, nr)		(((bank) - 1) * 32 + (nr))
 

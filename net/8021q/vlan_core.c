@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0
 #include <linux/skbuff.h>
 #include <linux/netdevice.h>
 #include <linux/if_vlan.h>
@@ -9,7 +10,7 @@ bool vlan_do_receive(struct sk_buff **skbp)
 {
 	struct sk_buff *skb = *skbp;
 	__be16 vlan_proto = skb->vlan_proto;
-	u16 vlan_id = vlan_tx_tag_get_id(skb);
+	u16 vlan_id = skb_vlan_tag_get_id(skb);
 	struct net_device *vlan_dev;
 	struct vlan_pcpu_stats *rx_stats;
 
@@ -21,16 +22,24 @@ bool vlan_do_receive(struct sk_buff **skbp)
 	if (unlikely(!skb))
 		return false;
 
+	if (unlikely(!(vlan_dev->flags & IFF_UP))) {
+		kfree_skb(skb);
+		*skbp = NULL;
+		return false;
+	}
+
 	skb->dev = vlan_dev;
-	if (skb->pkt_type == PACKET_OTHERHOST) {
+	if (unlikely(skb->pkt_type == PACKET_OTHERHOST)) {
 		/* Our lower layer thinks this is not local, let's make sure.
 		 * This allows the VLAN to have a different MAC than the
 		 * underlying device, and still route correctly. */
-		if (ether_addr_equal(eth_hdr(skb)->h_dest, vlan_dev->dev_addr))
+		if (ether_addr_equal_64bits(eth_hdr(skb)->h_dest, vlan_dev->dev_addr))
 			skb->pkt_type = PACKET_HOST;
 	}
 
-	if (!(vlan_dev_priv(vlan_dev)->flags & VLAN_FLAG_REORDER_HDR)) {
+	if (!(vlan_dev_priv(vlan_dev)->flags & VLAN_FLAG_REORDER_HDR) &&
+	    !netif_is_macvlan_port(vlan_dev) &&
+	    !netif_is_bridge_port(vlan_dev)) {
 		unsigned int offset = skb->data - skb_mac_header(skb);
 
 		/*
@@ -39,8 +48,8 @@ bool vlan_do_receive(struct sk_buff **skbp)
 		 * original position later
 		 */
 		skb_push(skb, offset);
-		skb = *skbp = vlan_insert_tag(skb, skb->vlan_proto,
-					      skb->vlan_tci);
+		skb = *skbp = vlan_insert_inner_tag(skb, skb->vlan_proto,
+						    skb->vlan_tci, skb->mac_len);
 		if (!skb)
 			return false;
 		skb_pull(skb, offset + VLAN_HLEN);
@@ -63,7 +72,7 @@ bool vlan_do_receive(struct sk_buff **skbp)
 }
 
 /* Must be invoked with rcu_read_lock. */
-struct net_device *__vlan_find_dev_deep(struct net_device *dev,
+struct net_device *__vlan_find_dev_deep_rcu(struct net_device *dev,
 					__be16 vlan_proto, u16 vlan_id)
 {
 	struct vlan_info *vlan_info = rcu_dereference(dev->vlan_info);
@@ -81,13 +90,13 @@ struct net_device *__vlan_find_dev_deep(struct net_device *dev,
 
 		upper_dev = netdev_master_upper_dev_get_rcu(dev);
 		if (upper_dev)
-			return __vlan_find_dev_deep(upper_dev,
+			return __vlan_find_dev_deep_rcu(upper_dev,
 						    vlan_proto, vlan_id);
 	}
 
 	return NULL;
 }
-EXPORT_SYMBOL(__vlan_find_dev_deep);
+EXPORT_SYMBOL(__vlan_find_dev_deep_rcu);
 
 struct net_device *vlan_dev_real_dev(const struct net_device *dev)
 {
@@ -105,6 +114,12 @@ u16 vlan_dev_vlan_id(const struct net_device *dev)
 	return vlan_dev_priv(dev)->vlan_id;
 }
 EXPORT_SYMBOL(vlan_dev_vlan_id);
+
+__be16 vlan_dev_vlan_proto(const struct net_device *dev)
+{
+	return vlan_dev_priv(dev)->vlan_proto;
+}
+EXPORT_SYMBOL(vlan_dev_vlan_proto);
 
 /*
  * vlan info and vid list
@@ -200,7 +215,10 @@ static int __vlan_vid_add(struct vlan_info *vlan_info, __be16 proto, u16 vid,
 		return -ENOMEM;
 
 	if (vlan_hw_filter_capable(dev, vid_info)) {
-		err =  ops->ndo_vlan_rx_add_vid(dev, proto, vid);
+		if (netif_device_present(dev))
+			err = ops->ndo_vlan_rx_add_vid(dev, proto, vid);
+		else
+			err = -ENODEV;
 		if (err) {
 			kfree(vid_info);
 			return err;
@@ -258,7 +276,10 @@ static void __vlan_vid_del(struct vlan_info *vlan_info,
 	int err;
 
 	if (vlan_hw_filter_capable(dev, vid_info)) {
-		err = ops->ndo_vlan_rx_kill_vid(dev, proto, vid);
+		if (netif_device_present(dev))
+			err = ops->ndo_vlan_rx_kill_vid(dev, proto, vid);
+		else
+			err = -ENODEV;
 		if (err) {
 			pr_warn("failed to kill vid %04x/%d for device %s\n",
 				proto, vid, dev->name);

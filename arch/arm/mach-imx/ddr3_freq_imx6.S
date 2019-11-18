@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2014 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright (C) 2011-2015 Freescale Semiconductor, Inc. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -10,10 +10,6 @@
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
-
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
 #include <linux/linkage.h>
@@ -25,6 +21,7 @@
 #define MMDC0_MDCF1			0x10
 #define MMDC0_MDMISC		0x18
 #define MMDC0_MDSCR		0x1c
+#define MMDC0_MAARCR		0x400
 #define MMDC0_MAPSR			0x404
 #define MMDC0_MADPCR0		0x410
 #define MMDC0_MPZQHWCTRL	0x800
@@ -42,18 +39,33 @@
 #define CCM_CDHIPR			0x48
 
 #define L2_CACHE_SYNC		0x730
+#define PL310_AUX_CTRL          0x104
+#define PL310_DCACHE_LOCKDOWN_BASE 0x900
+#define PL310_AUX_16WAY_BIT	0x10000
+#define PL310_LOCKDOWN_NBREGS   8
+#define PL310_LOCKDOWN_SZREG    4
+#define PL310_8WAYS_MASK        0x00FF
+#define PL310_16WAYS_UPPERMASK  0xFF00
+
+#define IMX6QP_REVISION_ID 0x630100
+#define ANADIG_DIGPROG     0x260
 
 .extern iram_tlb_phys_addr
-#ifdef CONFIG_SMP
-.extern imx_scu_base
-#endif
 
 .globl mx6_ddr3_freq_change_start
 .globl mx6_ddr3_freq_change_end
-.globl wfe_ddr3_freq_change_start
-.globl wfe_ddr3_freq_change_end
 
 	.align 3
+
+	.macro is_mx6qp
+
+	/* check if the SOC is i.MX6QP */
+	ldr	r0, =IMX_IO_P2V(MX6Q_ANATOP_BASE_ADDR)
+	ldr	r1, [r0, #ANADIG_DIGPROG]
+	ldr	r2, =IMX6QP_REVISION_ID
+	cmp	r1, r2
+
+	.endm
 
 	.macro	switch_to_528MHz
 
@@ -391,11 +403,14 @@ mx6_ddr3_freq_change_start:
 	ldr	r7, [r6]
 
 	/*
-	  * Need to flush and disable L1 before disabling L2, we need data to
-	  * coherent. Flushing L1 pushes everyhting to L2. We sync L2 later, but
-	  * it can still have dirty lines. While exiting, we need to enable L2 first
+	  * Need to flush and disable L1 before
+	  * disabling L2, we need data to
+	  * coherent. Flushing L1 pushes
+	  * everyhting to L2. We sync L2 later, but
+	  * it can still have dirty lines.
+	  * While exiting, we need to enable L2 first
 	  * and then L1.
-	 . */
+	  */
 	disable_l1_dcache
 
 #ifdef CONFIG_CACHE_L2X0
@@ -414,11 +429,20 @@ wait_for_l2_to_idle:
 	mov	r1, #0x0
 	str	r1, [r12, #L2_CACHE_SYNC]
 
-	/* Disable L2. */
-	str	r1, [r12, #0x100]
-
 	dsb
 	isb
+
+	ldr	r1, [r12, #PL310_AUX_CTRL]
+	tst	r1, #PL310_AUX_16WAY_BIT
+	mov	r1, #PL310_8WAYS_MASK
+	orrne	r1, #PL310_16WAYS_UPPERMASK
+	mov	r6, #PL310_LOCKDOWN_NBREGS
+	add	r5, r12, #PL310_DCACHE_LOCKDOWN_BASE
+1:	/* lock Dcache and Icache */
+	str	r1, [r5], #PL310_LOCKDOWN_SZREG
+	str	r1, [r5], #PL310_LOCKDOWN_SZREG
+	subs	r6, r6, #1
+	bne	1b
 #endif
 
 	/*
@@ -509,9 +533,25 @@ poll_conreq_set_1:
 	cmp	r0, #(0x4 << 12)
 	bne	poll_conreq_set_1
 
-	ldr	r0, =0x00008010
+	/*
+	 * if requested frequency is great than
+	 * 300MHz, skip setting bypass adopt mode.
+	 */
+	ldr	r1, =300000000
+	cmp	r4, r1
+	bge	1f
+
+	is_mx6qp
+	bne	1f
+	/* Switch to adopt mode, set MMDC0_MAARCR bit25~26 to 2b'01 */
+	ldr	r0, [r5, #MMDC0_MAARCR]
+	bic	r0, r0, #(0x3 << 25)
+	orr	r0, #(0x01 << 25)
+	str	r0 , [r5, #MMDC0_MAARCR]
+1:
+	ldr	r0, =0x00008050
 	str	r0, [r5, #MMDC0_MDSCR]
-	ldr	r0, =0x00008018
+	ldr	r0, =0x00008058
 	str	r0, [r5, #MMDC0_MDSCR]
 
 	/*
@@ -635,7 +675,11 @@ cont_1:
 	orr	r0, r0, #0x4
 	str	r0, [r5, #MMDC0_MDCF1]
 
-	ldr	r0, =0x00091680
+	ldr	r0, [r5, #MMDC0_MDMISC]
+	bic	r0, r0, #(0x3 << 16) /* walat = 0x1 */
+	orr	r0, r0, #(0x1 << 16)
+	bic	r0, r0, #(0x7 << 6)  /* ralat = 0x2 */
+	orr	r0, r0, #(0x2 << 6)
 	str	r0, [r5, #MMDC0_MDMISC]
 
 	/* enable dqs pull down in the IOMUX. */
@@ -766,7 +810,9 @@ poll_dvfs_clear_2:
 	cmp	r9, #0
 	beq	update_calibration_only
 
-	ldr	r0, =0xa1390003
+	/* issue zq calibration command */
+	ldr	r0, [r5, #MMDC0_MPZQHWCTRL]
+	orr	r0, r0, #0x3
 	str	r0, [r5, #MMDC0_MPZQHWCTRL]
 	ldr	r2, =MMDC1_MPZQHWCTRL
 	str	r0, [r5, r2]
@@ -823,15 +869,11 @@ update_iomux1:
 	str	r3, [r5, r0]
 	add	r8, r8, #8
 
-	/* update MISC register: WALAT, RALAT */
-	ldr	r0, =0x00081740
-	str	r0, [r5, #MMDC0_MDMISC]
-
 	/* configure ddr devices to dll on, odt. */
-	ldr	r0, =0x00028031
+	ldr	r0, =0x00048031
 	str	r0, [r5, #MMDC0_MDSCR]
 
-	ldr	r0, =0x00028039
+	ldr	r0, =0x00048039
 	str	r0, [r5, #MMDC0_MDSCR]
 
 	/* delay for while. */
@@ -848,10 +890,10 @@ cont7:
 	bgt	delay7
 
 	/* reset dll. */
-	ldr	r0, =0x09208030
+	ldr	r0, =0x09408030
 	str	r0, [r5, #MMDC0_MDSCR]
 
-	ldr	r0, =0x09208038
+	ldr	r0, =0x09408038
 	str	r0, [r5, #MMDC0_MDSCR]
 
 	/* delay for while. */
@@ -907,7 +949,7 @@ cont8:
 	add	r8, r8, #8
 
 	ldr	r2, =0x4818
-	str	r0, [r5, r2]
+	str	r3, [r5, r2]
 
 	/* delay for while. */
 	ldr	r1, =40
@@ -970,6 +1012,17 @@ update_calib:
 	bic	r0, r0, #(1 << 8)
 	str	r0, [r5, #MMDC0_MADPCR0]
 
+	is_mx6qp
+	bne	3f
+	/*
+	 * Switch back to adopt_bp mode, set MMDC0_MAARCR
+	 * bit25~26 to 2b'10.
+	 */
+	ldr	r0, [r5, #MMDC0_MAARCR]
+	bic	r0, r0, #(0x3 << 25)
+	orr	r0, r0, #(0x2 << 25)
+	str	r0, [r5, #MMDC0_MAARCR]
+3:
 	mov	r0, #0x0
 	str	r0, [r5, #MMDC0_MDSCR]
 poll_conreq_clear_2:
@@ -985,10 +1038,18 @@ done:
 	str	r0, [r5, #MMDC0_MAPSR]
 
 #ifdef CONFIG_CACHE_L2X0
-	/* Enable L2. */
-	ldr	r7, =IMX_IO_P2V(MX6Q_L2_BASE_ADDR)
-	ldr	r6, =0x1
-	str	r6, [r7, #0x100]
+	ldr	r1, [r12, #PL310_AUX_CTRL]
+	tst	r1, #PL310_AUX_16WAY_BIT
+	mov	r6, #PL310_LOCKDOWN_NBREGS
+	mov	r1, #0x00	/* 8 ways mask */
+	orrne	r1, #0x0000	/* 16 ways mask */
+	add	r5, r12, #PL310_DCACHE_LOCKDOWN_BASE
+1:	/* lock Dcache and Icache */
+	str	r1, [r5], #PL310_LOCKDOWN_SZREG
+	str	r1, [r5], #PL310_LOCKDOWN_SZREG
+	subs	r6, r6, #1
+	bne	1b
+
 	isb
 	dsb
 #endif
@@ -1040,77 +1101,3 @@ done:
 	 */
 	.ltorg
 mx6_ddr3_freq_change_end:
-
-#ifdef CONFIG_SMP
-	.align 3
-
-ENTRY(wfe_ddr3_freq_change)
-wfe_ddr3_freq_change_start:
-	push	{r4 - r11, lr}
-
-	mov	r6, r0
-	mov	r7, r1
-
-	dsb
-	isb
-
-	disable_l1_dcache
-
-	isb
-
-	/* Turn off SMP bit. */
-	mrc	p15, 0, r8, c1, c0, 1
-	bic	r8, r8, #0x40
-	mcr	p15, 0, r8, c1, c0, 1
-
-	isb
-
-	/* Inform the SCU we are going to enter WFE. */
-	push	{r0 - r11, lr}
-
-	ldr	r0,=imx_scu_base
-	ldr	r0, [r0]
-	mov	r1, #SCU_PM_DORMANT
-	ldr	r3, =scu_power_mode
-	mov	lr, pc
-	mov	pc, r3
-
-	pop	{r0 - r11, lr}
-
-go_back_wfe:
-	wfe
-
-	ldr	r3, [r7]
-	cmp	r3, #1
-	beq	go_back_wfe
-
-	/* Turn ON SMP bit. */
-	mrc	p15, 0, r8, c1, c0, 1
-	orr	r8, r8, #0x40
-	mcr	p15, 0, r8, c1, c0, 1
-
-	isb
-	/* Enable L1 data cache. */
-	mrc	p15, 0, r8, c1, c0, 0
-	orr	r8, r8, #0x4
-	mcr	p15, 0, r8, c1, c0, 0
-	isb
-
-	/* Inform the SCU we have exited WFE. */
-	push	{r0 - r11, lr}
-
-	ldr	r0,=imx_scu_base
-	ldr	r0, [r0]
-	mov	r1, #SCU_PM_NORMAL
-	ldr	r3, =scu_power_mode
-	mov	lr, pc
-	mov	pc, r3
-
-	pop	{r0 - r11, lr}
-
-	/* Pop all saved registers. */
-	pop	{r4 - r11, lr}
-	mov	pc, lr
-	.ltorg
-wfe_ddr3_freq_change_end:
-#endif

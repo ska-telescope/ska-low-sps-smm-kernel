@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2014 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright (C) 2010-2015 Freescale Semiconductor, Inc. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -177,12 +177,21 @@ static inline int vcom_rs_to_uV(int rs, int pass_num)
 		- (vcom_data[pass_num].vcom_step_uV * rs);
 }
 
+/*
+ * This function should only be called with positive voltage values because
+ * negative ones are considered errors by the regulator core implementation.
+ *
+ * The given positive value if the absolute value of the desired negative one.
+ */
 static int max17135_vcom_set_voltage(struct regulator_dev *reg,
 					int minuV, int uV, unsigned *selector)
 {
 	struct max17135 *max17135 = rdev_get_drvdata(reg);
 	unsigned int reg_val;
 	int vcom_read;
+
+	/* Transform uV for our negative land values */
+	uV = -uV;
 
 	if ((uV < vcom_data[max17135->pass_num-1].vcom_min_uV)
 		|| (uV > vcom_data[max17135->pass_num-1].vcom_max_uV))
@@ -209,18 +218,29 @@ static int max17135_vcom_set_voltage(struct regulator_dev *reg,
 	return 0;
 }
 
+/*
+ * This function should only return positive voltage values because negative
+ * ones are considered errors by the regulator core implementation.
+ */
 static int max17135_vcom_get_voltage(struct regulator_dev *reg)
 {
 	struct max17135 *max17135 = rdev_get_drvdata(reg);
 	unsigned int reg_val;
+	int uV;
 
 	max17135_reg_read(REG_MAX17135_DVR, &reg_val);
-	return vcom_rs_to_uV(BITFEXT(reg_val, DVR), max17135->pass_num-1);
+	uV = vcom_rs_to_uV(BITFEXT(reg_val, DVR), max17135->pass_num-1);
+
+	/* Transform uV to positive value */
+	uV = -uV;
+
+	return uV;
 }
 
 static int max17135_vcom_enable(struct regulator_dev *reg)
 {
 	struct max17135 *max17135 = rdev_get_drvdata(reg);
+	int uV;
 
 	/*
 	 * Check to see if we need to set the VCOM voltage.
@@ -228,10 +248,9 @@ static int max17135_vcom_enable(struct regulator_dev *reg)
 	 * only change vcom voltage if we have been enabled.
 	 */
 	if (!max17135->vcom_setup && max17135_is_power_good(max17135)) {
-		max17135_vcom_set_voltage(reg,
-			max17135->vcom_uV,
-			max17135->vcom_uV,
-			NULL);
+		uV = (-1) * max17135->vcom_uV;
+
+		max17135_vcom_set_voltage(reg, uV, uV, NULL);
 		max17135->vcom_setup = true;
 	}
 
@@ -602,7 +621,8 @@ static int max17135_pmic_dt_parse_pdata(struct platform_device *pdev,
 
 		rdata->id = i;
 		rdata->initdata = of_get_regulator_init_data(&pdev->dev,
-							     reg_np);
+							     reg_np,
+							     &max17135_reg[i]);
 		rdata->reg_node = reg_np;
 		rdata++;
 	}
@@ -812,7 +832,7 @@ static int __init max17135_setup(char *options)
 		if (!*opt)
 			continue;
 		if (!strncmp(opt, "pass=", 5)) {
-			ret = strict_strtoul(opt + 5, 0, &max17135_pass_num);
+			ret = kstrtoul(opt + 5, 0, &max17135_pass_num);
 			if (ret < 0)
 				return ret;
 		}
@@ -820,7 +840,7 @@ static int __init max17135_setup(char *options)
 			int offs = 5;
 			if (opt[5] == '-')
 				offs = 6;
-			ret = strict_strtoul(opt + offs, 0,
+			ret = kstrtoul(opt + offs, 0,
 				(long *)&max17135_vcom);
 			if (ret < 0)
 				return ret;

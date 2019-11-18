@@ -2,17 +2,20 @@
  * CAAM/SEC 4.x transport/backend driver
  * JobR backend functionality
  *
- * Copyright 2008-2015 Freescale Semiconductor, Inc.
+ * Copyright 2008-2016 Freescale Semiconductor, Inc.
+ * Copyright 2017-2019 NXP
  */
 
 #include <linux/of_irq.h>
 #include <linux/of_address.h>
 
 #include "compat.h"
+#include "ctrl.h"
 #include "regs.h"
 #include "jr.h"
 #include "desc.h"
 #include "intern.h"
+#include "inst_rng.h"
 
 struct jr_driver_data {
 	/* List of Physical JobR's with the Driver */
@@ -22,42 +25,122 @@ struct jr_driver_data {
 
 static struct jr_driver_data driver_data;
 
-static int caam_reset_hw_jr(struct device *dev)
+static inline void mask_itr(struct device *dev)
 {
 	struct caam_drv_private_jr *jrp = dev_get_drvdata(dev);
+
+	clrsetbits_32(&jrp->rregs->rconfig_lo, 0, JRCFG_IMSK);
+}
+
+static inline void unmask_itr(struct device *dev)
+{
+	struct caam_drv_private_jr *jrp = dev_get_drvdata(dev);
+
+	clrsetbits_32(&jrp->rregs->rconfig_lo, JRCFG_IMSK, 0);
+}
+
+/*
+ * Put the CAAM in quiesce, ie stop
+ *
+ * Must be called with itr disabled
+ */
+static int caam_jr_stop_processing(struct device *dev, u32 jrcr_bits)
+{
 	unsigned int timeout = 100000;
+	unsigned int halt_status;
+	struct caam_drv_private_jr *jrp = dev_get_drvdata(dev);
+
+	if (rd_reg32(&jrp->rregs->jrintstatus) & JRINT_ERR_HALT_MASK) {
+		dev_err(dev, "Not ready to quiesce\n");
+		return -EINVAL;
+	}
+
+	/* initiate quiesce */
+	wr_reg32(&jrp->rregs->jrcommand, jrcr_bits);
+
+	/* Wait for the quiesce completion or timeout run out */
+	do {
+		cpu_relax();
+		halt_status = rd_reg32(&jrp->rregs->jrintstatus) &
+			      JRINT_ERR_HALT_MASK;
+	} while ((halt_status == JRINT_ERR_HALT_INPROGRESS) &&
+		 --timeout);
+
+	halt_status = rd_reg32(&jrp->rregs->jrintstatus) & JRINT_ERR_HALT_MASK;
+
+	/* Check that the flush is complete */
+	if (halt_status != JRINT_ERR_HALT_COMPLETE) {
+		dev_err(dev, "failed to quiesce\n");
+		return -EIO;
+	}
+
+	return 0;
+}
+
+/*
+ * Flush the job ring, so the jobs running will be stopped, jobs queued will be
+ * invalidated and the CAAM will no longer fetch fron input ring.
+ *
+ * Must be called with itr disabled
+ */
+static int caam_jr_flush(struct device *dev)
+{
+	return caam_jr_stop_processing(dev, JRCR_RESET);
+}
+
+#ifdef CONFIG_PM_SLEEP
+
+/* The resume can be used after a park or a flush if CAAM has not been reset */
+static int caam_jr_restart_processing(struct device *dev)
+{
+	struct caam_drv_private_jr *jrp = dev_get_drvdata(dev);
+	u32 park_status = rd_reg32(&jrp->rregs->jrintstatus) &
+			  JRINT_ERR_HALT_MASK;
+
+	/* Check that the flush/park is completed */
+	if (park_status != JRINT_ERR_HALT_COMPLETE)
+		return -1;
+
+	/* Resume processing of jobs */
+	wr_reg32(&jrp->rregs->jrintstatus, JRINT_ERR_HALT_COMPLETE);
+
+	return 0;
+}
+
+#endif /* CONFIG_PM_SLEEP */
+
+static int caam_reset_hw_jr(struct device *dev)
+{
+	int err = 0;
+	struct caam_drv_private_jr *jrp = dev_get_drvdata(dev);
+	unsigned int timeout = 100000;
+	unsigned int reset_status;
 
 	/*
 	 * mask interrupts since we are going to poll
 	 * for reset completion status
 	 */
-	setbits32(&jrp->rregs->rconfig_lo, JRCFG_IMSK);
+	mask_itr(dev);
 
-	/* initiate flush (required prior to reset) */
-	wr_reg32(&jrp->rregs->jrcommand, JRCR_RESET);
-	while (((rd_reg32(&jrp->rregs->jrintstatus) & JRINT_ERR_HALT_MASK) ==
-		JRINT_ERR_HALT_INPROGRESS) && --timeout)
-		cpu_relax();
-
-	if ((rd_reg32(&jrp->rregs->jrintstatus) & JRINT_ERR_HALT_MASK) !=
-	    JRINT_ERR_HALT_COMPLETE || timeout == 0) {
-		dev_err(dev, "failed to flush job ring %d\n", jrp->ridx);
-		return -EIO;
-	}
+	err = caam_jr_flush(dev);
+	if (err)
+		return err;
 
 	/* initiate reset */
-	timeout = 100000;
 	wr_reg32(&jrp->rregs->jrcommand, JRCR_RESET);
-	while ((rd_reg32(&jrp->rregs->jrcommand) & JRCR_RESET) && --timeout)
+	do {
 		cpu_relax();
+		reset_status = rd_reg32(&jrp->rregs->jrcommand) & JRCR_RESET;
+	} while (reset_status && --timeout);
 
-	if (timeout == 0) {
+	reset_status = rd_reg32(&jrp->rregs->jrcommand) & JRCR_RESET;
+	if (reset_status != 0) {
 		dev_err(dev, "failed to reset job ring %d\n", jrp->ridx);
 		return -EIO;
 	}
 
 	/* unmask interrupts */
-	clrbits32(&jrp->rregs->rconfig_lo, JRCFG_IMSK);
+	unmask_itr(dev);
 
 	return 0;
 }
@@ -65,7 +148,7 @@ static int caam_reset_hw_jr(struct device *dev)
 /*
  * Shutdown JobR independent of platform property code
  */
-int caam_jr_shutdown(struct device *dev)
+static int caam_jr_shutdown(struct device *dev)
 {
 	struct caam_drv_private_jr *jrp = dev_get_drvdata(dev);
 	dma_addr_t inpbusaddr, outbusaddr;
@@ -98,6 +181,12 @@ static int caam_jr_remove(struct platform_device *pdev)
 
 	jrdev = &pdev->dev;
 	jrpriv = dev_get_drvdata(jrdev);
+
+	/*
+	 * Deinstantiate RNG by first JR
+	 */
+	if (jrpriv->ridx == 0)
+		deinst_rng(pdev);
 
 	/*
 	 * Return EBUSY if job ring already allocated.
@@ -147,7 +236,7 @@ static irqreturn_t caam_jr_interrupt(int irq, void *st_dev)
 	}
 
 	/* mask valid interrupts */
-	setbits32(&jrp->rregs->rconfig_lo, JRCFG_IMSK);
+	mask_itr(dev);
 
 	/* Have valid interrupt at this point, just ACK and trigger */
 	wr_reg32(&jrp->rregs->jrintstatus, irqstate);
@@ -160,17 +249,15 @@ static irqreturn_t caam_jr_interrupt(int irq, void *st_dev)
 }
 
 /* Deferred service handler, run as interrupt-fired tasklet */
-static void caam_jr_dequeue(unsigned long devarg)
+static void caam_jr_dequeue(unsigned long data)
 {
 	int hw_idx, sw_idx, i, head, tail;
-	struct device *dev = (struct device *)devarg;
+	struct caam_jr_dequeue_params *params = (void *)data;
+	struct device *dev = params->dev;
 	struct caam_drv_private_jr *jrp = dev_get_drvdata(dev);
 	void (*usercall)(struct device *dev, u32 *desc, u32 status, void *arg);
 	u32 *userdesc, userstatus;
 	void *userarg;
-	dma_addr_t outbusaddr;
-
-	outbusaddr = rd_reg64(&jrp->rregs->outring_base);
 
 	while (rd_reg32(&jrp->rregs->outring_used)) {
 
@@ -180,24 +267,20 @@ static void caam_jr_dequeue(unsigned long devarg)
 
 		sw_idx = tail = jrp->tail;
 		hw_idx = jrp->out_ring_read_index;
-		dma_sync_single_for_cpu(dev, outbusaddr,
-					sizeof(struct jr_outentry) * JOBR_DEPTH,
-					DMA_FROM_DEVICE);
 
 		for (i = 0; CIRC_CNT(head, tail + i, JOBR_DEPTH) >= 1; i++) {
 			sw_idx = (tail + i) & (JOBR_DEPTH - 1);
 
-			smp_read_barrier_depends();
-
 			if (jrp->outring[hw_idx].desc ==
-			    jrp->entinfo[sw_idx].desc_addr_dma)
+			    caam_dma_to_cpu(jrp->entinfo[sw_idx].desc_addr_dma))
 				break; /* found */
 		}
 		/* we should never fail to find a matching descriptor */
 		BUG_ON(CIRC_CNT(head, tail + i, JOBR_DEPTH) <= 0);
 
 		/* Unmap just-run descriptor so we can post-process */
-		dma_unmap_single(dev, jrp->outring[hw_idx].desc,
+		dma_unmap_single(dev,
+				 caam_dma_to_cpu(jrp->outring[hw_idx].desc),
 				 jrp->entinfo[sw_idx].desc_size,
 				 DMA_TO_DEVICE);
 
@@ -208,9 +291,14 @@ static void caam_jr_dequeue(unsigned long devarg)
 		usercall = jrp->entinfo[sw_idx].callbk;
 		userarg = jrp->entinfo[sw_idx].cbkarg;
 		userdesc = jrp->entinfo[sw_idx].desc_addr_virt;
-		userstatus = jrp->outring[hw_idx].jrstatus;
+		userstatus = caam32_to_cpu(jrp->outring[hw_idx].jrstatus);
 
-		smp_mb();
+		/*
+		 * Make sure all information from the job has been obtained
+		 * before telling CAAM that the job has been removed from the
+		 * output ring.
+		 */
+		mb();
 
 		/* set done */
 		wr_reg32(&jrp->rregs->outring_rmvd, 1);
@@ -226,7 +314,6 @@ static void caam_jr_dequeue(unsigned long devarg)
 		if (sw_idx == tail) {
 			do {
 				tail = (tail + 1) & (JOBR_DEPTH - 1);
-				smp_read_barrier_depends();
 			} while (CIRC_CNT(head, tail, JOBR_DEPTH) >= 1 &&
 				 jrp->entinfo[tail].desc_addr_dma == 0);
 
@@ -240,7 +327,8 @@ static void caam_jr_dequeue(unsigned long devarg)
 	}
 
 	/* reenable / unmask IRQs */
-	clrbits32(&jrp->rregs->rconfig_lo, JRCFG_IMSK);
+	if (params->enable_itr)
+		unmask_itr(dev);
 }
 
 /**
@@ -252,7 +340,7 @@ static void caam_jr_dequeue(unsigned long devarg)
 struct device *caam_jr_alloc(void)
 {
 	struct caam_drv_private_jr *jrpriv, *min_jrpriv = NULL;
-	struct device *dev = NULL;
+	struct device *dev = ERR_PTR(-ENODEV);
 	int min_tfm_cnt	= INT_MAX;
 	int tfm_cnt;
 
@@ -331,21 +419,14 @@ int caam_jr_enqueue(struct device *dev, u32 *desc,
 	struct caam_drv_private_jr *jrp = dev_get_drvdata(dev);
 	struct caam_jrentry_info *head_entry;
 	int head, tail, desc_size;
-	dma_addr_t desc_dma, inpbusaddr;
+	dma_addr_t desc_dma;
 
-	desc_size = (*desc & HDR_JD_LENGTH_MASK) * sizeof(u32);
+	desc_size = (caam32_to_cpu(*desc) & HDR_JD_LENGTH_MASK) * sizeof(u32);
 	desc_dma = dma_map_single(dev, desc, desc_size, DMA_TO_DEVICE);
 	if (dma_mapping_error(dev, desc_dma)) {
 		dev_err(dev, "caam_jr_enqueue(): can't map jobdesc\n");
 		return -EIO;
 	}
-
-	dma_sync_single_for_device(dev, desc_dma, desc_size, DMA_TO_DEVICE);
-
-	inpbusaddr = rd_reg64(&jrp->rregs->inpring_base);
-	dma_sync_single_for_device(dev, inpbusaddr,
-					sizeof(dma_addr_t) * JOBR_DEPTH,
-					DMA_TO_DEVICE);
 
 	spin_lock_bh(&jrp->inplock);
 
@@ -366,18 +447,22 @@ int caam_jr_enqueue(struct device *dev, u32 *desc,
 	head_entry->cbkarg = areq;
 	head_entry->desc_addr_dma = desc_dma;
 
-	jrp->inpring[jrp->inp_ring_write_index] = desc_dma;
-
-	dma_sync_single_for_device(dev, inpbusaddr,
-					sizeof(dma_addr_t) * JOBR_DEPTH,
-					DMA_TO_DEVICE);
-
+	jrp->inpring[jrp->inp_ring_write_index] = cpu_to_caam_dma(desc_dma);
+	/*
+	 * Guarantee that the descriptor's DMA address has been written to
+	 * the next slot in the ring before the write index is updated, since
+	 * other cores may update this index independently.
+	 */
 	smp_wmb();
 
 	jrp->inp_ring_write_index = (jrp->inp_ring_write_index + 1) &
 				    (JOBR_DEPTH - 1);
 	jrp->head = (head + 1) & (JOBR_DEPTH - 1);
 
+	/*
+	 * Ensure that all job information has been written before
+	 * notifying CAAM that a new job was added to the input ring.
+	 */
 	wmb();
 
 	wr_reg32(&jrp->rregs->inpring_jobadd, 1);
@@ -387,6 +472,30 @@ int caam_jr_enqueue(struct device *dev, u32 *desc,
 	return 0;
 }
 EXPORT_SYMBOL(caam_jr_enqueue);
+
+static void caam_jr_init_hw(struct device *dev, dma_addr_t inpbusaddr,
+			    dma_addr_t outbusaddr)
+{
+	struct caam_drv_private_jr *jrp = dev_get_drvdata(dev);
+
+	wr_reg64(&jrp->rregs->inpring_base, inpbusaddr);
+	wr_reg64(&jrp->rregs->outring_base, outbusaddr);
+	wr_reg32(&jrp->rregs->inpring_size, JOBR_DEPTH);
+	wr_reg32(&jrp->rregs->outring_size, JOBR_DEPTH);
+
+	/* Select interrupt coalescing parameters */
+	clrsetbits_32(&jrp->rregs->rconfig_lo, 0, JOBR_INTC |
+		      (JOBR_INTC_COUNT_THLD << JRCFG_ICDCT_SHIFT) |
+		      (JOBR_INTC_TIME_THLD << JRCFG_ICTT_SHIFT));
+}
+
+static void caam_jr_reset_index(struct caam_drv_private_jr *jrp)
+{
+	jrp->inp_ring_write_index = 0;
+	jrp->out_ring_read_index = 0;
+	jrp->head = 0;
+	jrp->tail = 0;
+}
 
 /*
  * Init JobR independent of platform property detection
@@ -399,7 +508,14 @@ static int caam_jr_init(struct device *dev)
 
 	jrp = dev_get_drvdata(dev);
 
-	tasklet_init(&jrp->irqtask, caam_jr_dequeue, (unsigned long)dev);
+	error = caam_reset_hw_jr(dev);
+	if (error)
+		goto out_kill_deq;
+
+	jrp->tasklet_params.dev = dev;
+	jrp->tasklet_params.enable_itr = 1;
+	tasklet_init(&jrp->irqtask, caam_jr_dequeue,
+		     (unsigned long)&jrp->tasklet_params);
 
 	/* Connect job ring interrupt handler. */
 	error = request_irq(jrp->irq, caam_jr_interrupt, IRQF_SHARED,
@@ -407,58 +523,76 @@ static int caam_jr_init(struct device *dev)
 	if (error) {
 		dev_err(dev, "can't connect JobR %d interrupt (%d)\n",
 			jrp->ridx, jrp->irq);
-		irq_dispose_mapping(jrp->irq);
-		jrp->irq = 0;
-		return -EINVAL;
+		goto out_kill_deq;
 	}
 
-	error = caam_reset_hw_jr(dev);
-	if (error)
-		return error;
+	error = -ENOMEM;
+	jrp->inpring = dma_alloc_coherent(dev, sizeof(*jrp->inpring) *
+					  JOBR_DEPTH, &inpbusaddr, GFP_KERNEL);
+	if (!jrp->inpring)
+		goto out_free_irq;
 
-	jrp->inpring = dma_alloc_coherent(dev, sizeof(dma_addr_t) * JOBR_DEPTH,
-					  &inpbusaddr, GFP_KERNEL);
-
-	jrp->outring = dma_alloc_coherent(dev, sizeof(struct jr_outentry) *
+	jrp->outring = dma_alloc_coherent(dev, sizeof(*jrp->outring) *
 					  JOBR_DEPTH, &outbusaddr, GFP_KERNEL);
+	if (!jrp->outring)
+		goto out_free_inpring;
 
-	jrp->entinfo = kzalloc(sizeof(struct caam_jrentry_info) * JOBR_DEPTH,
-			       GFP_KERNEL);
-
-	if ((jrp->inpring == NULL) || (jrp->outring == NULL) ||
-	    (jrp->entinfo == NULL)) {
-		dev_err(dev, "can't allocate job rings for %d\n",
-			jrp->ridx);
-		return -ENOMEM;
-	}
+	jrp->entinfo = kcalloc(JOBR_DEPTH, sizeof(*jrp->entinfo), GFP_KERNEL);
+	if (!jrp->entinfo)
+		goto out_free_outring;
 
 	for (i = 0; i < JOBR_DEPTH; i++)
 		jrp->entinfo[i].desc_addr_dma = !0;
 
 	/* Setup rings */
-	jrp->inp_ring_write_index = 0;
-	jrp->out_ring_read_index = 0;
-	jrp->head = 0;
-	jrp->tail = 0;
-
-	wr_reg64(&jrp->rregs->inpring_base, inpbusaddr);
-	wr_reg64(&jrp->rregs->outring_base, outbusaddr);
-	wr_reg32(&jrp->rregs->inpring_size, JOBR_DEPTH);
-	wr_reg32(&jrp->rregs->outring_size, JOBR_DEPTH);
+	caam_jr_reset_index(jrp);
 
 	jrp->ringsize = JOBR_DEPTH;
+
+	caam_jr_init_hw(dev, inpbusaddr, outbusaddr);
 
 	spin_lock_init(&jrp->inplock);
 	spin_lock_init(&jrp->outlock);
 
-	/* Select interrupt coalescing parameters */
-	setbits32(&jrp->rregs->rconfig_lo, JOBR_INTC |
-		  (JOBR_INTC_COUNT_THLD << JRCFG_ICDCT_SHIFT) |
-		  (JOBR_INTC_TIME_THLD << JRCFG_ICTT_SHIFT));
-
 	return 0;
+
+out_free_outring:
+	dma_free_coherent(dev, sizeof(struct jr_outentry) * JOBR_DEPTH,
+			  jrp->outring, outbusaddr);
+out_free_inpring:
+	dma_free_coherent(dev, sizeof(dma_addr_t) * JOBR_DEPTH,
+			  jrp->inpring, inpbusaddr);
+	dev_err(dev, "can't allocate job rings for %d\n", jrp->ridx);
+out_free_irq:
+	free_irq(jrp->irq, dev);
+out_kill_deq:
+	tasklet_kill(&jrp->irqtask);
+	return error;
 }
 
+static int caam_jr_instantiate_rng(struct device *jrdev)
+{
+	int error = 0;
+	struct caam_drv_private_jr *jrpriv;
+	struct caam_drv_private *ctrlpriv = dev_get_drvdata(jrdev->parent);
+
+	if (ctrlpriv->has_seco || ctrlpriv->has_optee) {
+		dev_dbg(jrdev, "RNG instantiated by secure component\n");
+		goto exit;
+	}
+
+	jrpriv = dev_get_drvdata(jrdev);
+
+	/*
+	 * If this is the first available JR
+	 * then try to instantiate RNG
+	 */
+	if (jrpriv->ridx == 0)
+		error = inst_rng_imx(to_platform_device(jrdev));
+
+exit:
+	return error;
+}
 
 /*
  * Probe routine for each detected JobR subsystem.
@@ -473,12 +607,14 @@ static int caam_jr_probe(struct platform_device *pdev)
 	int error;
 
 	jrdev = &pdev->dev;
-	jrpriv = devm_kmalloc(jrdev, sizeof(struct caam_drv_private_jr),
-			      GFP_KERNEL);
-	if (!jrpriv)
-		return -ENOMEM;
+	jrpriv = devm_kmalloc(jrdev, sizeof(*jrpriv), GFP_KERNEL);
+	if (!jrpriv) {
+		error = -ENOMEM;
+		goto exit;
+	}
 
 	dev_set_drvdata(jrdev, jrpriv);
+	jrpriv->dev = jrdev;
 
 	/* save ring identity relative to detection */
 	jrpriv->ridx = total_jobrs++;
@@ -489,18 +625,37 @@ static int caam_jr_probe(struct platform_device *pdev)
 	ctrl = of_iomap(nprop, 0);
 	if (!ctrl) {
 		dev_err(jrdev, "of_iomap() failed\n");
-		return -ENOMEM;
+		error = -ENOMEM;
+		goto exit;
 	}
 
-	jrpriv->rregs = (struct caam_job_ring __force *)ctrl;
+	jrpriv->rregs = (struct caam_job_ring __iomem __force *)ctrl;
 
-	if (sizeof(dma_addr_t) == sizeof(u64))
-		if (of_device_is_compatible(nprop, "fsl,sec-v5.0-job-ring"))
-			dma_set_mask(jrdev, DMA_BIT_MASK(40));
+	if (of_machine_is_compatible("fsl,imx8mn") ||
+	    of_machine_is_compatible("fsl,imx8mm") ||
+	    of_machine_is_compatible("fsl,imx8qm") ||
+	    of_machine_is_compatible("fsl,imx8qxp") ||
+	    of_machine_is_compatible("fsl,imx8mq")) {
+		error = dma_set_mask_and_coherent(jrdev, DMA_BIT_MASK(32));
+	} else if (sizeof(dma_addr_t) == sizeof(u64)) {
+		if (caam_dpaa2)
+			error = dma_set_mask_and_coherent(jrdev,
+							  DMA_BIT_MASK(49));
+		else if (of_device_is_compatible(nprop,
+						 "fsl,sec-v5.0-job-ring"))
+			error = dma_set_mask_and_coherent(jrdev,
+							  DMA_BIT_MASK(40));
 		else
-			dma_set_mask(jrdev, DMA_BIT_MASK(36));
-	else
-		dma_set_mask(jrdev, DMA_BIT_MASK(32));
+			error = dma_set_mask_and_coherent(jrdev,
+							  DMA_BIT_MASK(36));
+	} else {
+		error = dma_set_mask_and_coherent(jrdev, DMA_BIT_MASK(32));
+	}
+	if (error) {
+		dev_err(jrdev, "dma_set_mask_and_coherent failed (%d)\n",
+			error);
+		goto unmap_ctrl;
+	}
 
 	/* Identify the interrupt */
 	jrpriv->irq = irq_of_parse_and_map(nprop, 0);
@@ -512,9 +667,8 @@ static int caam_jr_probe(struct platform_device *pdev)
 	/* Now do the platform independent part */
 	error = caam_jr_init(jrdev); /* now turn on hardware */
 	if (error)
-		return error;
+		goto dispose_irq_mapping;
 
-	jrpriv->dev = jrdev;
 	spin_lock(&driver_data.jr_alloc_lock);
 	list_add_tail(&jrpriv->list_node, &driver_data.jr_list);
 	spin_unlock(&driver_data.jr_alloc_lock);
@@ -524,37 +678,141 @@ static int caam_jr_probe(struct platform_device *pdev)
 	device_init_wakeup(&pdev->dev, 1);
 	device_set_wakeup_enable(&pdev->dev, false);
 
-	return 0;
+	error = caam_jr_instantiate_rng(jrdev);
+	if (error)
+		goto remove_jr_from_list;
+
+	goto exit;
+
+remove_jr_from_list:
+	spin_lock(&driver_data.jr_alloc_lock);
+	list_del(&jrpriv->list_node);
+	spin_unlock(&driver_data.jr_alloc_lock);
+dispose_irq_mapping:
+	irq_dispose_mapping(jrpriv->irq);
+unmap_ctrl:
+	iounmap(ctrl);
+
+exit:
+	return error;
 }
 
-#ifdef CONFIG_PM
+#ifdef CONFIG_PM_SLEEP
+
+static void caam_jr_get_hw_state(struct device *dev)
+{
+	struct caam_drv_private_jr *jrp = dev_get_drvdata(dev);
+
+	jrp->state.inpbusaddr = rd_reg64(&jrp->rregs->inpring_base);
+	jrp->state.outbusaddr = rd_reg64(&jrp->rregs->outring_base);
+}
+
 static int caam_jr_suspend(struct device *dev)
 {
+	int err = 0;
 	struct platform_device *pdev = to_platform_device(dev);
 	struct caam_drv_private_jr *jrpriv = platform_get_drvdata(pdev);
+	struct caam_drv_private *ctrlpriv = dev_get_drvdata(dev->parent);
+	struct caam_jr_dequeue_params suspend_params = {
+		.dev = dev,
+		.enable_itr = 0,
+	};
 
-	if (device_may_wakeup(&pdev->dev))
+	if (ctrlpriv->caam_off_during_pm) {
+		tasklet_disable(&jrpriv->irqtask);
+
+		/* mask itr to call flush */
+		mask_itr(dev);
+
+		/* Invalid job in process */
+		err = caam_jr_flush(dev);
+		if (err) {
+			dev_err(dev, "Failed to flush\n");
+			goto exit;
+		}
+
+		/* Dequeing jobs flushed */
+		caam_jr_dequeue((unsigned long)&suspend_params);
+
+		/* Save state */
+		caam_jr_get_hw_state(dev);
+
+	} else if (device_may_wakeup(&pdev->dev)) {
 		enable_irq_wake(jrpriv->irq);
+	}
 
-	return 0;
+exit:
+	return err;
 }
 
 static int caam_jr_resume(struct device *dev)
 {
+	int err = 0;
 	struct platform_device *pdev = to_platform_device(dev);
 	struct caam_drv_private_jr *jrpriv = platform_get_drvdata(pdev);
+	struct caam_drv_private *ctrlpriv = dev_get_drvdata(dev->parent);
 
-	if (device_may_wakeup(&pdev->dev))
+	if (ctrlpriv->caam_off_during_pm) {
+		u64 inp_addr;
+
+		/*
+		 * Check if the CAAM has been resetted checking the address of
+		 * the input ring
+		 */
+		inp_addr = rd_reg64(&jrpriv->rregs->inpring_base);
+		if (inp_addr != 0) {
+			/* JR still has some configuration */
+			if (inp_addr == jrpriv->state.inpbusaddr) {
+				/* JR has not been resetted */
+				err = caam_jr_restart_processing(dev);
+				if (err)
+					goto exit;
+
+				tasklet_enable(&jrpriv->irqtask);
+
+				unmask_itr(dev);
+
+				goto exit;
+			} else if (ctrlpriv->has_optee) {
+				/* JR has been used by OPTEE, reset it */
+				err = caam_reset_hw_jr(dev);
+				if (err) {
+					dev_err(dev, "Failed to reset JR\n");
+					goto exit;
+				}
+			} else {
+				/* No explanation, return error */
+				err = -EIO;
+				goto exit;
+			}
+		}
+
+		caam_jr_reset_index(jrpriv);
+
+		caam_jr_init_hw(dev, jrpriv->state.inpbusaddr,
+				jrpriv->state.outbusaddr);
+
+		tasklet_enable(&jrpriv->irqtask);
+
+		err = caam_jr_instantiate_rng(dev);
+		if (err) {
+			dev_err(dev, "Failed to instantiate RNG\n");
+			goto exit;
+		}
+
+	} else if (device_may_wakeup(&pdev->dev)) {
 		disable_irq_wake(jrpriv->irq);
+	}
 
-	return 0;
+exit:
+	return err;
 }
 
-static SIMPLE_DEV_PM_OPS(caam_jr_pm_ops, caam_jr_suspend,
-			 caam_jr_resume);
-#endif
+SIMPLE_DEV_PM_OPS(caam_jr_pm_ops, caam_jr_suspend, caam_jr_resume);
 
-static struct of_device_id caam_jr_match[] = {
+#endif /* CONFIG_PM_SLEEP */
+
+static const struct of_device_id caam_jr_match[] = {
 	{
 		.compatible = "fsl,sec-v4.0-job-ring",
 	},
@@ -568,9 +826,8 @@ MODULE_DEVICE_TABLE(of, caam_jr_match);
 static struct platform_driver caam_jr_driver = {
 	.driver = {
 		.name = "caam_jr",
-		.owner = THIS_MODULE,
 		.of_match_table = caam_jr_match,
-#ifdef CONFIG_PM
+#ifdef CONFIG_PM_SLEEP
 		.pm = &caam_jr_pm_ops,
 #endif
 	},

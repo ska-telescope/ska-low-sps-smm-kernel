@@ -92,6 +92,7 @@ struct mxc_vout_output {
 	struct video_device *vfd;
 	struct mutex mutex;
 	struct mutex task_lock;
+	struct mutex accs_lock;
 	enum v4l2_buf_type type;
 
 	struct videobuf_queue vbq;
@@ -133,6 +134,8 @@ struct mxc_vout_output {
 
 	struct videobuf_buffer *pre1_vb;
 	struct videobuf_buffer *pre2_vb;
+
+	bool input_crop;
 };
 
 struct mxc_vout_dev {
@@ -150,6 +153,10 @@ static int debug;
 static int vdi_rate_double;
 static int video_nr = 16;
 
+static int mxc_vidioc_s_input_crop(struct mxc_vout_output *vout,
+				const struct v4l2_crop *crop);
+static int mxc_vidioc_g_input_crop(struct mxc_vout_output *vout,
+				struct v4l2_crop *crop);
 /* Module parameters */
 module_param(video_nr, int, S_IRUGO);
 MODULE_PARM_DESC(video_nr, "video device numbers");
@@ -233,6 +240,9 @@ static struct mxc_vout_fb g_fb_setting[MAX_FB_NUM];
 static int config_disp_output(struct mxc_vout_output *vout);
 static void release_disp_output(struct mxc_vout_output *vout);
 
+static DEFINE_MUTEX(gfb_mutex);
+static DEFINE_MUTEX(gfbi_mutex);
+
 static unsigned int get_frame_size(struct mxc_vout_output *vout)
 {
 	unsigned int size;
@@ -294,7 +304,7 @@ static ipu_channel_t get_ipu_channel(struct fb_info *fbi)
 static unsigned int get_ipu_fmt(struct fb_info *fbi)
 {
 	mm_segment_t old_fs;
-	unsigned int fb_fmt;
+	unsigned int fb_fmt = 0;
 
 	if (fbi->fbops->fb_ioctl) {
 		old_fs = get_fs();
@@ -311,8 +321,9 @@ static void update_display_setting(void)
 {
 	int i;
 	struct fb_info *fbi;
-	struct v4l2_rect bg_crop_bounds[2];
+	struct v4l2_rect bg_crop_bounds[2] = { { 0, 0, 0, 0 }, { 0, 0, 0, 0} };
 
+	mutex_lock(&gfb_mutex);
 	for (i = 0; i < num_registered_fb; i++) {
 		fbi = registered_fb[i];
 
@@ -347,6 +358,7 @@ static void update_display_setting(void)
 			g_fb_setting[i].crop_bounds =
 				bg_crop_bounds[g_fb_setting[i].ipu_id];
 	}
+	mutex_unlock(&gfb_mutex);
 }
 
 /* called after g_fb_setting filled by update_display_setting */
@@ -355,6 +367,10 @@ static int update_setting_from_fbi(struct mxc_vout_output *vout,
 {
 	int i;
 	bool found = false;
+
+	mutex_lock(&gfbi_mutex);
+
+	update_display_setting();
 
 	for (i = 0; i < MAX_FB_NUM; i++) {
 		if (g_fb_setting[i].name) {
@@ -373,6 +389,7 @@ static int update_setting_from_fbi(struct mxc_vout_output *vout,
 
 	if (!found) {
 		v4l2_err(vout->vfd->v4l2_dev, "can not find output\n");
+		mutex_unlock(&gfbi_mutex);
 		return -EINVAL;
 	}
 	strlcpy(vout->vfd->name, fbi->fix.id, sizeof(vout->vfd->name));
@@ -385,6 +402,7 @@ static int update_setting_from_fbi(struct mxc_vout_output *vout,
 	vout->task.input.crop.pos.y = 0;
 	vout->task.input.crop.w = DEF_INPUT_WIDTH;
 	vout->task.input.crop.h = DEF_INPUT_HEIGHT;
+	vout->input_crop = false;
 
 	vout->task.output.width = vout->crop_bounds.width;
 	vout->task.output.height = vout->crop_bounds.height;
@@ -397,6 +415,7 @@ static int update_setting_from_fbi(struct mxc_vout_output *vout,
 	else
 		vout->task.output.format = IPU_PIX_FMT_RGB565;
 
+	mutex_unlock(&gfbi_mutex);
 	return 0;
 }
 
@@ -520,7 +539,7 @@ static void setup_buf_timer(struct mxc_vout_output *vout,
 		expiry_time = timeval_to_ktime(vb->ts);
 
 	now = hrtimer_cb_get_time(&vout->timer);
-	if ((now.tv64 > expiry_time.tv64)) {
+	if (ktime_after(now, expiry_time)) {
 		v4l2_dbg(1, debug, vout->vfd->v4l2_dev,
 				"warning: timer timeout already expired.\n");
 		expiry_time = now;
@@ -529,7 +548,7 @@ static void setup_buf_timer(struct mxc_vout_output *vout,
 	hrtimer_start(&vout->timer, expiry_time, HRTIMER_MODE_ABS);
 
 	v4l2_dbg(1, debug, vout->vfd->v4l2_dev, "timer handler next "
-		"schedule: %lldnsecs\n", expiry_time.tv64);
+		"schedule: %lldnsecs\n", ktime_to_ns(expiry_time));
 }
 
 static int show_buf(struct mxc_vout_output *vout, int idx,
@@ -570,9 +589,6 @@ static int show_buf(struct mxc_vout_output *vout, int idx,
 
 static void disp_work_func(struct work_struct *work)
 {
-  
-	printk(KERN_DEBUG "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX dfsjsdlfdlskjflskdjfldsjk\n");
-  
 	struct mxc_vout_output *vout =
 		container_of(work, struct mxc_vout_output, disp_work);
 	struct videobuf_queue *q = &vout->vbq;
@@ -943,6 +959,7 @@ static int mxc_vout_release(struct file *file)
 	if (!vout)
 		return 0;
 
+	mutex_lock(&vout->accs_lock);
 	if (--vout->open_cnt == 0) {
 		q = &vout->vbq;
 		if (q->streaming)
@@ -955,6 +972,30 @@ static int mxc_vout_release(struct file *file)
 		ret = videobuf_mmap_free(q);
 	}
 
+	mutex_unlock(&vout->accs_lock);
+	return ret;
+}
+
+static long mxc_vout_ioctl(struct file *file,
+	       unsigned int cmd, unsigned long arg)
+{
+	struct mxc_vout_output *vout = file->private_data;
+	struct v4l2_crop crop;
+	int ret;
+
+	switch (cmd) {
+	case VIDIOC_S_INPUT_CROP:
+		if (copy_from_user(&crop, (void __user *)arg, sizeof(struct v4l2_crop)))
+			return -EFAULT;
+		ret = mxc_vidioc_s_input_crop(vout, &crop);
+		break;
+	case VIDIOC_G_INPUT_CROP:
+		mxc_vidioc_g_input_crop(vout, &crop);
+		ret = copy_from_user((void __user *)arg, &crop, sizeof(struct v4l2_crop));
+		break;
+	default:
+		ret = video_ioctl2(file, cmd, arg);
+	}
 	return ret;
 }
 
@@ -968,11 +1009,11 @@ static int mxc_vout_open(struct file *file)
 	if (vout == NULL)
 		return -ENODEV;
 
+	mutex_lock(&vout->accs_lock);
 	if (vout->open_cnt++ == 0) {
 		vout->ctrl_rotate = 0;
 		vout->ctrl_vflip = 0;
 		vout->ctrl_hflip = 0;
-		update_display_setting();
 		ret = update_setting_from_fbi(vout, vout->fbi);
 		if (ret < 0)
 			goto err;
@@ -1002,6 +1043,7 @@ static int mxc_vout_open(struct file *file)
 	file->private_data = vout;
 
 err:
+	mutex_unlock(&vout->accs_lock);
 	return ret;
 }
 
@@ -1016,7 +1058,8 @@ static int mxc_vidioc_querycap(struct file *file, void *fh,
 	strlcpy(cap->driver, VOUT_NAME, sizeof(cap->driver));
 	strlcpy(cap->card, vout->vfd->name, sizeof(cap->card));
 	cap->bus_info[0] = '\0';
-	cap->capabilities = V4L2_CAP_STREAMING | V4L2_CAP_VIDEO_OUTPUT;
+	cap->device_caps = V4L2_CAP_STREAMING | V4L2_CAP_VIDEO_OUTPUT;
+	cap->capabilities = cap->device_caps | V4L2_CAP_DEVICE_CAPS;
 
 	return 0;
 }
@@ -1038,22 +1081,12 @@ static int mxc_vidioc_g_fmt_vid_out(struct file *file, void *fh,
 			struct v4l2_format *f)
 {
 	struct mxc_vout_output *vout = fh;
-	struct v4l2_rect rect;
 
 	f->fmt.pix.width = vout->task.input.width;
 	f->fmt.pix.height = vout->task.input.height;
 	f->fmt.pix.pixelformat = vout->task.input.format;
 	f->fmt.pix.sizeimage = get_frame_size(vout);
 
-	if (f->fmt.pix.priv) {
-		rect.left = vout->task.input.crop.pos.x;
-		rect.top = vout->task.input.crop.pos.y;
-		rect.width = vout->task.input.crop.w;
-		rect.height = vout->task.input.crop.h;
-		if (copy_to_user((void __user *)f->fmt.pix.priv,
-				&rect, sizeof(rect)))
-			return -EFAULT;
-	}
 	v4l2_dbg(1, debug, vout->vfd->v4l2_dev,
 			"frame_size:0x%x, pix_fmt:0x%x\n",
 			f->fmt.pix.sizeimage,
@@ -1275,7 +1308,6 @@ static int mxc_vout_try_format(struct mxc_vout_output *vout,
 				struct v4l2_format *f)
 {
 	int ret = 0;
-	struct v4l2_rect rect;
 
 	if ((f->fmt.pix.field != V4L2_FIELD_NONE) &&
 		(IPU_PIX_FMT_TILED_NV12 == vout->task.input.format)) {
@@ -1284,9 +1316,12 @@ static int mxc_vout_try_format(struct mxc_vout_output *vout,
 		return -EINVAL;
 	}
 
-	if (f->fmt.pix.priv && copy_from_user(&rect,
-		(void __user *)f->fmt.pix.priv, sizeof(rect)))
-		return -EFAULT;
+	if (vout->input_crop == false) {
+		vout->task.input.crop.pos.x = 0;
+		vout->task.input.crop.pos.y = 0;
+		vout->task.input.crop.w = f->fmt.pix.width;
+		vout->task.input.crop.h = f->fmt.pix.height;
+	}
 
 	vout->task.input.width = f->fmt.pix.width;
 	vout->task.input.height = f->fmt.pix.height;
@@ -1296,31 +1331,10 @@ static int mxc_vout_try_format(struct mxc_vout_output *vout,
 	if (ret < 0)
 		return ret;
 
-	if (f->fmt.pix.priv) {
-		vout->task.input.crop.pos.x = rect.left;
-		vout->task.input.crop.pos.y = rect.top;
-		vout->task.input.crop.w = rect.width;
-		vout->task.input.crop.h = rect.height;
-	} else {
-		vout->task.input.crop.pos.x = 0;
-		vout->task.input.crop.pos.y = 0;
-		vout->task.input.crop.w = f->fmt.pix.width;
-		vout->task.input.crop.h = f->fmt.pix.height;
-	}
-	memcpy(&vout->in_rect, &vout->task.input.crop, sizeof(vout->in_rect));
-
 	ret = mxc_vout_try_task(vout);
 	if (!ret) {
-		if (f->fmt.pix.priv) {
-			rect.width = vout->task.input.crop.w;
-			rect.height = vout->task.input.crop.h;
-			if (copy_to_user((void __user *)f->fmt.pix.priv,
-				&rect, sizeof(rect)))
-				ret = -EFAULT;
-		} else {
-			f->fmt.pix.width = vout->task.input.crop.w;
-			f->fmt.pix.height = vout->task.input.crop.h;
-		}
+		f->fmt.pix.width = vout->task.input.crop.w;
+		f->fmt.pix.height = vout->task.input.crop.h;
 	}
 
 	return ret;
@@ -1775,6 +1789,41 @@ static int mxc_vidioc_dqbuf(struct file *file, void *fh, struct v4l2_buffer *b)
 		return videobuf_dqbuf(&vout->vbq, (struct v4l2_buffer *)b, 0);
 }
 
+static int mxc_vidioc_s_input_crop(struct mxc_vout_output *vout,
+				const struct v4l2_crop *crop)
+{
+	int ret = 0;
+
+	if (crop->type != V4L2_BUF_TYPE_VIDEO_OUTPUT)
+		return -EINVAL;
+
+	if (crop->c.width < 0 || crop->c.height < 0)
+		return -EINVAL;
+
+	vout->task.input.crop.pos.x = crop->c.left;
+	vout->task.input.crop.pos.y = crop->c.top;
+	vout->task.input.crop.w = crop->c.width;
+	vout->task.input.crop.h = crop->c.height;
+
+	vout->input_crop = true;
+	memcpy(&vout->in_rect, &vout->task.input.crop, sizeof(vout->in_rect));
+
+	return ret;
+}
+
+static int mxc_vidioc_g_input_crop(struct mxc_vout_output *vout,
+				struct v4l2_crop *crop)
+{
+	int ret = 0;
+
+	crop->c.left = vout->task.input.crop.pos.x;
+	crop->c.top = vout->task.input.crop.pos.y;
+	crop->c.width = vout->task.input.crop.w;
+	crop->c.height = vout->task.input.crop.h;
+
+	return ret;
+}
+
 static int set_window_position(struct mxc_vout_output *vout,
 				struct mxcfb_pos *pos)
 {
@@ -2026,6 +2075,8 @@ static int mxc_vidioc_streamon(struct file *file, void *fh,
 	hrtimer_init(&vout->timer, CLOCK_REALTIME, HRTIMER_MODE_ABS);
 	vout->timer.function = mxc_vout_timer_handler;
 	vout->timer_stop = true;
+	vout->frame_count = 0;
+	vout->vdi_frame_cnt = 0;
 
 	vout->start_ktime = hrtimer_cb_get_time(&vout->timer);
 
@@ -2088,7 +2139,7 @@ static const struct v4l2_ioctl_ops mxc_vout_ioctl_ops = {
 
 static const struct v4l2_file_operations mxc_vout_fops = {
 	.owner		= THIS_MODULE,
-	.unlocked_ioctl	= video_ioctl2,
+	.unlocked_ioctl	= mxc_vout_ioctl,
 	.mmap		= mxc_vout_mmap,
 	.open		= mxc_vout_open,
 	.release	= mxc_vout_release,
@@ -2165,13 +2216,13 @@ static int mxc_vout_setup_output(struct mxc_vout_dev *dev)
 		}
 
 		*vout->vfd = mxc_vout_template;
-		vout->vfd->debug = debug;
 		vout->vfd->v4l2_dev = &dev->v4l2_dev;
 		vout->vfd->lock = &vout->mutex;
 		vout->vfd->vfl_dir = VFL_DIR_TX;
 
 		mutex_init(&vout->mutex);
 		mutex_init(&vout->task_lock);
+		mutex_init(&vout->accs_lock);
 
 		strlcpy(vout->vfd->name, fbi->fix.id, sizeof(vout->vfd->name));
 

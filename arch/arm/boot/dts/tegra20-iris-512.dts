@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0
 /dts-v1/;
 
 #include "tegra20-colibri-512.dtsi"
@@ -5,6 +6,15 @@
 / {
 	model = "Toradex Colibri T20 512MB on Iris";
 	compatible = "toradex,iris", "toradex,colibri_t20-512", "nvidia,tegra20";
+
+	aliases {
+		serial0 = &uarta;
+		serial1 = &uartd;
+	};
+
+	chosen {
+		stdout-path = "serial0:115200n8";
+	};
 
 	host1x@50000000 {
 		hdmi@54280000 {

@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * CAAM control-plane driver backend public-level include definitions
  *
@@ -8,6 +9,7 @@
 #define CTRL_H
 
 /* Prototypes for backend-level services exposed to APIs */
-int caam_get_era(u32 caam_id);
+
+extern bool caam_dpaa2;
 
 #endif /* CTRL_H */

@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2014 Freescale Semiconductor, Inc.
+ * Copyright 2011-2015 Freescale Semiconductor, Inc.
  * Copyright 2011 Linaro Ltd.
  *
  * The code contained herein is licensed under the GNU General Public
@@ -14,11 +14,9 @@
 #include <linux/jiffies.h>
 #include <asm/cp15.h>
 #include <asm/proc-fns.h>
-#include <asm/smp_scu.h>
 
 #include "common.h"
-
-extern void __iomem *imx_scu_base;
+#include "hardware.h"
 
 static inline void cpu_enter_lowpower(void)
 {
@@ -39,8 +37,6 @@ static inline void cpu_enter_lowpower(void)
 	  : "=&r" (v)
 	  : "r" (0), "Ir" (CR_C), "Ir" (0x40)
 	  : "cc");
-
-	scu_power_mode(imx_scu_base, SCU_PM_DORMANT);
 }
 
 /*
@@ -57,7 +53,8 @@ void imx_cpu_die(unsigned int cpu)
 	 * the register being cleared to kill the cpu.
 	 */
 	imx_set_cpu_arg(cpu, ~0);
-	for (;;)
+
+	while (1)
 		cpu_do_idle();
 }
 
@@ -70,5 +67,7 @@ int imx_cpu_kill(unsigned int cpu)
 			return 0;
 	imx_enable_cpu(cpu, false);
 	imx_set_cpu_arg(cpu, 0);
+	if (cpu_is_imx7d())
+		imx_gpcv2_set_core1_pdn_pup_by_software(true);
 	return 1;
 }

@@ -12,11 +12,6 @@
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program; if not, write to the Free Software
-    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-    MA 02110-1301 USA.
  * ------------------------------------------------------------------------- */
 
 /* With some changes from Frodo Looijaard <frodol@dds.nl>, Kyösti Mälkki
@@ -558,9 +553,16 @@ static int bit_xfer(struct i2c_adapter *i2c_adap,
 		nak_ok = pmsg->flags & I2C_M_IGNORE_NAK;
 		if (!(pmsg->flags & I2C_M_NOSTART)) {
 			if (i) {
-				bit_dbg(3, &i2c_adap->dev, "emitting "
-					"repeated start condition\n");
-				i2c_repstart(adap);
+				if (msgs[i - 1].flags & I2C_M_STOP) {
+					bit_dbg(3, &i2c_adap->dev,
+						"emitting enforced stop/start condition\n");
+					i2c_stop(adap);
+					i2c_start(adap);
+				} else {
+					bit_dbg(3, &i2c_adap->dev,
+						"emitting repeated start condition\n");
+					i2c_repstart(adap);
+				}
 			}
 			ret = bit_doAddress(i2c_adap, pmsg);
 			if ((ret != 0) && !nak_ok) {
@@ -622,6 +624,10 @@ const struct i2c_algorithm i2c_bit_algo = {
 };
 EXPORT_SYMBOL(i2c_bit_algo);
 
+static const struct i2c_adapter_quirks i2c_bit_quirk_no_clk_stretch = {
+	.flags = I2C_AQ_NO_CLK_STRETCH,
+};
+
 /*
  * registering functions to load algorithms at runtime
  */
@@ -640,6 +646,8 @@ static int __i2c_bit_add_bus(struct i2c_adapter *adap,
 	/* register new adapter to i2c module... */
 	adap->algo = &i2c_bit_algo;
 	adap->retries = 3;
+	if (bit_adap->getscl == NULL)
+		adap->quirks = &i2c_bit_quirk_no_clk_stretch;
 
 	ret = add_adapter(adap);
 	if (ret < 0)

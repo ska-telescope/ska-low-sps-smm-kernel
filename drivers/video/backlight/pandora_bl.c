@@ -16,7 +16,7 @@
 #include <linux/delay.h>
 #include <linux/fb.h>
 #include <linux/backlight.h>
-#include <linux/i2c/twl.h>
+#include <linux/mfd/twl.h>
 #include <linux/err.h>
 
 #define TWL_PWM0_ON		0x00
@@ -100,15 +100,9 @@ done:
 	return 0;
 }
 
-static int pandora_backlight_get_brightness(struct backlight_device *bl)
-{
-	return bl->props.brightness;
-}
-
 static const struct backlight_ops pandora_backlight_ops = {
 	.options	= BL_CORE_SUSPENDRESUME,
 	.update_status	= pandora_backlight_update_status,
-	.get_brightness	= pandora_backlight_get_brightness,
 };
 
 static int pandora_backlight_probe(struct platform_device *pdev)
@@ -148,7 +142,6 @@ static int pandora_backlight_probe(struct platform_device *pdev)
 static struct platform_driver pandora_backlight_driver = {
 	.driver		= {
 		.name	= "pandora-backlight",
-		.owner	= THIS_MODULE,
 	},
 	.probe		= pandora_backlight_probe,
 };

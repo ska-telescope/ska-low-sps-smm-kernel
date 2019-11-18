@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
  * Code for working with individual keys, and sorted sets of keys with in a
  * btree node
@@ -11,6 +12,7 @@
 #include "bset.h"
 
 #include <linux/console.h>
+#include <linux/sched/clock.h>
 #include <linux/random.h>
 #include <linux/prefetch.h>
 
@@ -23,8 +25,8 @@ void bch_dump_bset(struct btree_keys *b, struct bset *i, unsigned set)
 	for (k = i->start; k < bset_bkey_last(i); k = next) {
 		next = bkey_next(k);
 
-		printk(KERN_ERR "block %u key %li/%u: ", set,
-		       (uint64_t *) k - i->d, i->keys);
+		printk(KERN_ERR "block %u key %u/%u: ", set,
+		       (unsigned) ((u64 *) k - i->d), i->keys);
 
 		if (b->ops->key_dump)
 			b->ops->key_dump(b, k);
@@ -1182,7 +1184,7 @@ static void __btree_sort(struct btree_keys *b, struct btree_iter *iter,
 {
 	uint64_t start_time;
 	bool used_mempool = false;
-	struct bset *out = (void *) __get_free_pages(__GFP_NOWARN|GFP_NOIO,
+	struct bset *out = (void *) __get_free_pages(__GFP_NOWARN|GFP_NOWAIT,
 						     order);
 	if (!out) {
 		struct page *outp;

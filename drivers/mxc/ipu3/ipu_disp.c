@@ -1,5 +1,6 @@
 /*
- * Copyright 2005-2013 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2005-2015 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2019 NXP
  */
 
 /*
@@ -432,11 +433,33 @@ static int _rgb_to_yuv(int n, int red, int green, int blue)
  * Column is for FG:	RGB2YUV YUV2RGB RGB2RGB YUV2YUV CSC_NONE
  */
 static struct dp_csc_param_t dp_csc_array[CSC_NUM][CSC_NUM] = {
-{{DP_COM_CONF_CSC_DEF_BOTH, &rgb2ycbcr_coeff}, {0, 0}, {0, 0}, {DP_COM_CONF_CSC_DEF_BG, &rgb2ycbcr_coeff}, {DP_COM_CONF_CSC_DEF_BG, &rgb2ycbcr_coeff} },
-{{0, 0}, {DP_COM_CONF_CSC_DEF_BOTH, &ycbcr2rgb_coeff}, {DP_COM_CONF_CSC_DEF_BG, &ycbcr2rgb_coeff}, {0, 0}, {DP_COM_CONF_CSC_DEF_BG, &ycbcr2rgb_coeff} },
-{{0, 0}, {DP_COM_CONF_CSC_DEF_FG, &ycbcr2rgb_coeff}, {0, 0}, {0, 0}, {0, 0} },
-{{DP_COM_CONF_CSC_DEF_FG, &rgb2ycbcr_coeff}, {0, 0}, {0, 0}, {0, 0}, {0, 0} },
-{{DP_COM_CONF_CSC_DEF_FG, &rgb2ycbcr_coeff}, {DP_COM_CONF_CSC_DEF_FG, &ycbcr2rgb_coeff}, {0, 0}, {0, 0}, {0, 0} }
+{
+	{DP_COM_CONF_CSC_DEF_BOTH, (void *)&rgb2ycbcr_coeff},
+	{0, 0}, {0, 0},
+	{DP_COM_CONF_CSC_DEF_BG, (void *)&rgb2ycbcr_coeff},
+	{DP_COM_CONF_CSC_DEF_BG, (void *)&rgb2ycbcr_coeff}
+},
+{
+	{0, 0},
+	{DP_COM_CONF_CSC_DEF_BOTH, (void *)&ycbcr2rgb_coeff},
+	{DP_COM_CONF_CSC_DEF_BG, (void *)&ycbcr2rgb_coeff},
+	{0, 0},
+	{DP_COM_CONF_CSC_DEF_BG, (void *)&ycbcr2rgb_coeff}
+},
+{
+	{0, 0},
+	{DP_COM_CONF_CSC_DEF_FG, (void *)&ycbcr2rgb_coeff},
+	{0, 0}, {0, 0}, {0, 0}
+},
+{
+	{DP_COM_CONF_CSC_DEF_FG, (void *)&rgb2ycbcr_coeff},
+	{0, 0}, {0, 0}, {0, 0}, {0, 0}
+},
+{
+	{DP_COM_CONF_CSC_DEF_FG, (void *)&rgb2ycbcr_coeff},
+	{DP_COM_CONF_CSC_DEF_FG, (void *)&ycbcr2rgb_coeff},
+	{0, 0}, {0, 0}, {0, 0}
+}
 };
 
 void __ipu_dp_csc_setup(struct ipu_soc *ipu,
@@ -558,7 +581,9 @@ int _ipu_dp_init(struct ipu_soc *ipu,
 		dev_dbg(ipu->dev, "_ipu_dp_init color key change to yuv fmt 0x%x!\n", color_key);
 	}
 
-	__ipu_dp_csc_setup(ipu, dp, dp_csc_array[ipu->bg_csc_type][ipu->fg_csc_type], true);
+	__ipu_dp_csc_setup(ipu, dp,
+			   dp_csc_array[ipu->bg_csc_type][ipu->fg_csc_type],
+			   false);
 
 	return 0;
 }
@@ -737,6 +762,7 @@ void _ipu_dp_dc_enable(struct ipu_soc *ipu, ipu_channel_t channel)
 	ipu_dc_write(ipu, reg, DC_WR_CH_CONF(dc_chan));
 
 	clk_prepare_enable(ipu->pixel_clk[di]);
+	ipu->pixel_clk_en[ipu->dc_di_assignment[dc_chan]] = true;
 }
 
 static irqreturn_t dc_irq_handler(int irq, void *dev_id)
@@ -802,9 +828,12 @@ void _ipu_dp_dc_disable(struct ipu_soc *ipu, ipu_channel_t channel, bool swap)
 
 		if (ipu_is_channel_busy(ipu, MEM_BG_SYNC)) {
 			ipu_cm_write(ipu, IPUIRQ_2_MASK(IPU_IRQ_DP_SF_END),
-					IPUIRQ_2_STATREG(IPU_IRQ_DP_SF_END));
-			while ((ipu_cm_read(ipu, IPUIRQ_2_STATREG(IPU_IRQ_DP_SF_END)) &
-						IPUIRQ_2_MASK(IPU_IRQ_DP_SF_END)) == 0) {
+				IPUIRQ_2_STATREG(ipu->devtype,
+							IPU_IRQ_DP_SF_END));
+			while ((ipu_cm_read(ipu,
+				IPUIRQ_2_STATREG(ipu->devtype,
+							IPU_IRQ_DP_SF_END)) &
+				IPUIRQ_2_MASK(IPU_IRQ_DP_SF_END)) == 0) {
 				msleep(2);
 				timeout -= 2;
 				if (timeout <= 0)
@@ -1080,8 +1109,8 @@ int32_t ipu_init_sync_panel(struct ipu_soc *ipu, int disp, uint32_t pixel_clk,
 		dev_err(ipu->dev, "clk_get di1 failed");
 		return PTR_ERR(ldb_di1_clk);
 	}
-
-	if (ldb_di0_clk == di_parent || ldb_di1_clk == di_parent) {
+	if (!strcmp(__clk_get_name(di_parent), __clk_get_name(ldb_di0_clk)) ||
+		!strcmp(__clk_get_name(di_parent), __clk_get_name(ldb_di1_clk))) {
 		/* if di clk parent is tve/ldb, then keep it;*/
 		dev_dbg(ipu->dev, "use special clk parent\n");
 		ret = clk_set_parent(ipu->pixel_clk_sel[disp], ipu->di_clk[disp]);
@@ -1130,6 +1159,10 @@ int32_t ipu_init_sync_panel(struct ipu_soc *ipu, int disp, uint32_t pixel_clk,
 		}
 	}
 	rounded_pixel_clk = clk_round_rate(ipu->pixel_clk[disp], pixel_clk);
+	if (rounded_pixel_clk == 0) {
+		dev_err(ipu->dev, "rounded pixel clock should not be zero\n");
+		return -EINVAL;
+	}
 	dev_dbg(ipu->dev, "round pixel clk:%d\n", rounded_pixel_clk);
 	ret = clk_set_rate(ipu->pixel_clk[disp], rounded_pixel_clk);
 	if (ret) {
@@ -1164,7 +1197,7 @@ int32_t ipu_init_sync_panel(struct ipu_soc *ipu, int disp, uint32_t pixel_clk,
 	ipu_di_write(ipu, disp, di_gen, DI_GENERAL);
 
 	if (sig.interlaced) {
-		if (g_ipu_hw_rev >= IPU_V3DEX) {
+		if (ipu->devtype >= IPUv3EX) {
 			/* Setup internal HSYNC waveform */
 			_ipu_di_sync_config(ipu,
 					disp, 		/* display */
@@ -1529,6 +1562,8 @@ int32_t ipu_init_sync_panel(struct ipu_soc *ipu, int disp, uint32_t pixel_clk,
 
 	if (!sig.clk_pol)
 		di_gen |= DI_GEN_POLARITY_DISP_CLK;
+	else
+		di_gen &= ~DI_GEN_POLARITY_DISP_CLK;
 
 	ipu_di_write(ipu, disp, di_gen, DI_GENERAL);
 
@@ -1555,7 +1590,7 @@ void ipu_uninit_sync_panel(struct ipu_soc *ipu, int disp)
 	uint32_t reg;
 	uint32_t di_gen;
 
-	if ((disp != 0) || (disp != 1))
+	if (disp != 0 && disp != 1)
 		return;
 
 	mutex_lock(&ipu->mutex_lock);
@@ -1579,6 +1614,11 @@ int ipu_init_async_panel(struct ipu_soc *ipu, int disp, int type, uint32_t cycle
 	u32 ser_conf = 0;
 	u32 div;
 	u32 di_clk = clk_get_rate(ipu->ipu_clk);
+
+	if (di_clk == 0) {
+		dev_err(ipu->dev, "di clock rate should not be zero\n");
+		return -EINVAL;
+	}
 
 	/* round up cycle_time, then calcalate the divider using scaled math */
 	cycle_time += (1000000000UL / di_clk) - 1;
@@ -1928,15 +1968,6 @@ int32_t ipu_disp_get_window_pos(struct ipu_soc *ipu, ipu_channel_t channel,
 	return ret;
 }
 EXPORT_SYMBOL(ipu_disp_get_window_pos);
-
-void ipu_disp_direct_write(struct ipu_soc *ipu, ipu_channel_t channel, u32 value, u32 offset)
-{
-	if (channel == DIRECT_ASYNC0)
-		writel(value, ipu->disp_base[0] + offset);
-	else if (channel == DIRECT_ASYNC1)
-		writel(value, ipu->disp_base[1] + offset);
-}
-EXPORT_SYMBOL(ipu_disp_direct_write);
 
 void ipu_reset_disp_panel(struct ipu_soc *ipu)
 {

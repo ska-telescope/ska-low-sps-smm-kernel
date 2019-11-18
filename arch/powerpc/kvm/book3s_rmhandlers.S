@@ -36,11 +36,18 @@
 
 #if defined(CONFIG_PPC_BOOK3S_64)
 
+#ifdef PPC64_ELF_ABI_v2
+#define FUNC(name) 		name
+#else
 #define FUNC(name) 		GLUE(.,name)
+#endif
 
 #elif defined(CONFIG_PPC_BOOK3S_32)
 
 #define FUNC(name)		name
+
+#define RFI_TO_KERNEL	RFI
+#define RFI_TO_GUEST	RFI
 
 .macro INTERRUPT_TRAMPOLINE intno
 
@@ -137,7 +144,7 @@ kvmppc_handler_skip_ins:
 	GET_SCRATCH0(r13)
 
 	/* And get back into the code */
-	RFI
+	RFI_TO_KERNEL
 #endif
 
 /*
@@ -146,7 +153,7 @@ kvmppc_handler_skip_ins:
  * On entry, r4 contains the guest shadow MSR
  * MSR.EE has to be 0 when calling this function
  */
-_GLOBAL(kvmppc_entry_trampoline)
+_GLOBAL_TOC(kvmppc_entry_trampoline)
 	mfmsr	r5
 	LOAD_REG_ADDR(r7, kvmppc_handler_trampoline_enter)
 	toreal(r7)
@@ -160,6 +167,6 @@ _GLOBAL(kvmppc_entry_trampoline)
 	ori	r5, r5, MSR_EE
 	mtsrr0	r7
 	mtsrr1	r6
-	RFI
+	RFI_TO_KERNEL
 
 #include "book3s_segment.S"

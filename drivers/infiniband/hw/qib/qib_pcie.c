@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2010 - 2017 Intel Corporation.  All rights reserved.
  * Copyright (c) 2008, 2009 QLogic Corporation. All rights reserved.
  *
  * This software is available to you under a choice of one of two
@@ -144,13 +145,7 @@ int qib_pcie_ddinit(struct qib_devdata *dd, struct pci_dev *pdev,
 	addr = pci_resource_start(pdev, 0);
 	len = pci_resource_len(pdev, 0);
 
-#if defined(__powerpc__)
-	/* There isn't a generic way to specify writethrough mappings */
-	dd->kregbase = __ioremap(addr, len, _PAGE_NO_CACHE | _PAGE_WRITETHRU);
-#else
 	dd->kregbase = ioremap_nocache(addr, len);
-#endif
-
 	if (!dd->kregbase)
 		return -ENOMEM;
 
@@ -193,109 +188,84 @@ void qib_pcie_ddcleanup(struct qib_devdata *dd)
 	pci_set_drvdata(dd->pcidev, NULL);
 }
 
-static void qib_msix_setup(struct qib_devdata *dd, int pos, u32 *msixcnt,
-			   struct qib_msix_entry *qib_msix_entry)
-{
-	int ret;
-	u32 tabsize = 0;
-	u16 msix_flags;
-	struct msix_entry *msix_entry;
-	int i;
-
-	/* We can't pass qib_msix_entry array to qib_msix_setup
-	 * so use a dummy msix_entry array and copy the allocated
-	 * irq back to the qib_msix_entry array. */
-	msix_entry = kmalloc(*msixcnt * sizeof(*msix_entry), GFP_KERNEL);
-	if (!msix_entry) {
-		ret = -ENOMEM;
-		goto do_intx;
-	}
-	for (i = 0; i < *msixcnt; i++)
-		msix_entry[i] = qib_msix_entry[i].msix;
-
-	pci_read_config_word(dd->pcidev, pos + PCI_MSIX_FLAGS, &msix_flags);
-	tabsize = 1 + (msix_flags & PCI_MSIX_FLAGS_QSIZE);
-	if (tabsize > *msixcnt)
-		tabsize = *msixcnt;
-	ret = pci_enable_msix(dd->pcidev, msix_entry, tabsize);
-	if (ret > 0) {
-		tabsize = ret;
-		ret = pci_enable_msix(dd->pcidev, msix_entry, tabsize);
-	}
-do_intx:
-	if (ret) {
-		qib_dev_err(dd,
-			"pci_enable_msix %d vectors failed: %d, falling back to INTx\n",
-			tabsize, ret);
-		tabsize = 0;
-	}
-	for (i = 0; i < tabsize; i++)
-		qib_msix_entry[i].msix = msix_entry[i];
-	kfree(msix_entry);
-	*msixcnt = tabsize;
-
-	if (ret)
-		qib_enable_intx(dd->pcidev);
-
-}
-
 /**
  * We save the msi lo and hi values, so we can restore them after
  * chip reset (the kernel PCI infrastructure doesn't yet handle that
  * correctly.
  */
-static int qib_msi_setup(struct qib_devdata *dd, int pos)
+static void qib_msi_setup(struct qib_devdata *dd, int pos)
 {
 	struct pci_dev *pdev = dd->pcidev;
 	u16 control;
-	int ret;
 
-	ret = pci_enable_msi(pdev);
-	if (ret)
-		qib_dev_err(dd,
-			"pci_enable_msi failed: %d, interrupts may not work\n",
-			ret);
-	/* continue even if it fails, we may still be OK... */
-
-	pci_read_config_dword(pdev, pos + PCI_MSI_ADDRESS_LO,
-			      &dd->msi_lo);
-	pci_read_config_dword(pdev, pos + PCI_MSI_ADDRESS_HI,
-			      &dd->msi_hi);
+	pci_read_config_dword(pdev, pos + PCI_MSI_ADDRESS_LO, &dd->msi_lo);
+	pci_read_config_dword(pdev, pos + PCI_MSI_ADDRESS_HI, &dd->msi_hi);
 	pci_read_config_word(pdev, pos + PCI_MSI_FLAGS, &control);
+
 	/* now save the data (vector) info */
-	pci_read_config_word(pdev, pos + ((control & PCI_MSI_FLAGS_64BIT)
-				    ? 12 : 8),
+	pci_read_config_word(pdev,
+			     pos + ((control & PCI_MSI_FLAGS_64BIT) ? 12 : 8),
 			     &dd->msi_data);
-	return ret;
 }
 
-int qib_pcie_params(struct qib_devdata *dd, u32 minw, u32 *nent,
-		    struct qib_msix_entry *entry)
+static int qib_allocate_irqs(struct qib_devdata *dd, u32 maxvec)
+{
+	unsigned int flags = PCI_IRQ_LEGACY;
+
+	/* Check our capabilities */
+	if (dd->pcidev->msix_cap) {
+		flags |= PCI_IRQ_MSIX;
+	} else {
+		if (dd->pcidev->msi_cap) {
+			flags |= PCI_IRQ_MSI;
+			/* Get msi_lo and msi_hi */
+			qib_msi_setup(dd, dd->pcidev->msi_cap);
+		}
+	}
+
+	if (!(flags & (PCI_IRQ_MSIX | PCI_IRQ_MSI)))
+		qib_dev_err(dd, "No PCI MSI or MSIx capability!\n");
+
+	return pci_alloc_irq_vectors(dd->pcidev, 1, maxvec, flags);
+}
+
+int qib_pcie_params(struct qib_devdata *dd, u32 minw, u32 *nent)
 {
 	u16 linkstat, speed;
-	int pos = 0, ret = 1;
+	int nvec;
+	int maxvec;
+	int ret = 0;
 
 	if (!pci_is_pcie(dd->pcidev)) {
 		qib_dev_err(dd, "Can't find PCI Express capability!\n");
 		/* set up something... */
 		dd->lbus_width = 1;
 		dd->lbus_speed = 2500; /* Gen1, 2.5GHz */
+		ret = -1;
 		goto bail;
 	}
 
-	pos = dd->pcidev->msix_cap;
-	if (nent && *nent && pos) {
-		qib_msix_setup(dd, pos, nent, entry);
-		ret = 0; /* did it, either MSIx or INTx */
-	} else {
-		pos = dd->pcidev->msi_cap;
-		if (pos)
-			ret = qib_msi_setup(dd, pos);
-		else
-			qib_dev_err(dd, "No PCI MSI or MSIx capability!\n");
+	maxvec = (nent && *nent) ? *nent : 1;
+	nvec = qib_allocate_irqs(dd, maxvec);
+	if (nvec < 0) {
+		ret = nvec;
+		goto bail;
 	}
-	if (!pos)
-		qib_enable_intx(dd->pcidev);
+
+	/*
+	 * If nent exists, make sure to record how many vectors were allocated
+	 */
+	if (nent) {
+		*nent = nvec;
+
+		/*
+		 * If we requested (nent) MSIX, but msix_enabled is not set,
+		 * pci_alloc_irq_vectors() enabled INTx.
+		 */
+		if (!dd->pcidev->msix_enabled)
+			qib_dev_err(dd,
+				    "no msix vectors allocated, using INTx\n");
+	}
 
 	pcie_capability_read_word(dd->pcidev, PCI_EXP_LNKSTA, &linkstat);
 	/*
@@ -382,7 +352,7 @@ int qib_reinit_intr(struct qib_devdata *dd)
 	ret = 1;
 bail:
 	if (!ret && (dd->flags & QIB_HAS_INTX)) {
-		qib_enable_intx(dd->pcidev);
+		qib_enable_intx(dd);
 		ret = 1;
 	}
 
@@ -400,7 +370,7 @@ bail:
 void qib_nomsi(struct qib_devdata *dd)
 {
 	dd->msi_lo = 0;
-	pci_disable_msi(dd->pcidev);
+	pci_free_irq_vectors(dd->pcidev);
 }
 
 /*
@@ -408,23 +378,21 @@ void qib_nomsi(struct qib_devdata *dd)
  */
 void qib_nomsix(struct qib_devdata *dd)
 {
-	pci_disable_msix(dd->pcidev);
+	pci_free_irq_vectors(dd->pcidev);
 }
 
 /*
  * Similar to pci_intx(pdev, 1), except that we make sure
  * msi(x) is off.
  */
-void qib_enable_intx(struct pci_dev *pdev)
+void qib_enable_intx(struct qib_devdata *dd)
 {
 	u16 cw, new;
 	int pos;
+	struct pci_dev *pdev = dd->pcidev;
 
-	/* first, turn on INTx */
-	pci_read_config_word(pdev, PCI_COMMAND, &cw);
-	new = cw & ~PCI_COMMAND_INTX_DISABLE;
-	if (new != cw)
-		pci_write_config_word(pdev, PCI_COMMAND, new);
+	if (pci_alloc_irq_vectors(pdev, 1, 1, PCI_IRQ_LEGACY) < 0)
+		qib_dev_err(dd,	"Failed to enable INTx\n");
 
 	pos = pdev->msi_cap;
 	if (pos) {
@@ -458,6 +426,7 @@ void qib_pcie_getcmd(struct qib_devdata *dd, u16 *cmd, u8 *iline, u8 *cline)
 void qib_pcie_reenable(struct qib_devdata *dd, u16 cmd, u8 iline, u8 cline)
 {
 	int r;
+
 	r = pci_write_config_dword(dd->pcidev, PCI_BASE_ADDRESS_0,
 				   dd->pcibar0);
 	if (r)
@@ -684,17 +653,11 @@ qib_pci_slot_reset(struct pci_dev *pdev)
 	return PCI_ERS_RESULT_CAN_RECOVER;
 }
 
-static pci_ers_result_t
-qib_pci_link_reset(struct pci_dev *pdev)
-{
-	qib_devinfo(pdev, "QIB link_reset function called, ignored\n");
-	return PCI_ERS_RESULT_CAN_RECOVER;
-}
-
 static void
 qib_pci_resume(struct pci_dev *pdev)
 {
 	struct qib_devdata *dd = pci_get_drvdata(pdev);
+
 	qib_devinfo(pdev, "QIB resume function called\n");
 	pci_cleanup_aer_uncorrect_error_status(pdev);
 	/*
@@ -708,7 +671,6 @@ qib_pci_resume(struct pci_dev *pdev)
 const struct pci_error_handlers qib_pci_err_handler = {
 	.error_detected = qib_pci_error_detected,
 	.mmio_enabled = qib_pci_mmio_enabled,
-	.link_reset = qib_pci_link_reset,
 	.slot_reset = qib_pci_slot_reset,
 	.resume = qib_pci_resume,
 };

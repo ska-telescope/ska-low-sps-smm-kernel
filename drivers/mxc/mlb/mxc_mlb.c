@@ -21,6 +21,7 @@
 #include <linux/clk.h>
 #include <linux/delay.h>
 #include <linux/device.h>
+#include <linux/dma-mapping.h>
 #include <linux/errno.h>
 #include <linux/fs.h>
 #include <linux/genalloc.h>
@@ -34,6 +35,8 @@
 #include <linux/of_device.h>
 #include <linux/platform_device.h>
 #include <linux/poll.h>
+#include <linux/regulator/consumer.h>
+#include <linux/sched/signal.h>
 #include <linux/sched.h>
 #include <linux/slab.h>
 #include <linux/spinlock.h>
@@ -364,19 +367,27 @@ struct mlb_dev_info {
 };
 
 struct mlb_data {
+	struct device *dev;
 	struct mlb_dev_info *devinfo;
-	struct clk *clk_mlb3p;
-	struct clk *clk_mlb6p;
+#ifdef CONFIG_ARCH_MXC_ARM64
+	struct clk *ipg;
+	struct clk *hclk;
+#endif
+	struct clk *mlb;
 	struct cdev cdev;
 	struct class *class;	/* device class */
 	dev_t firstdev;
+#ifdef CONFIG_REGULATOR
+	struct regulator *nvcc;
+#endif
 	void __iomem *membase;	/* mlb module base address */
 	struct gen_pool *iram_pool;
 	u32 iram_size;
-	u32 irq_ahb0;
-	u32 irq_ahb1;
-	u32 irq_mlb;
+	int irq_ahb0;
+	int irq_ahb1;
+	int irq_mlb;
 	u32 quirk_flag;
+	bool use_iram;
 };
 
 /*
@@ -1001,8 +1012,6 @@ static inline void mlb150_enable_pll(struct mlb_data *drvdata)
 				drvdata->membase + REG_MLBC0);
 	}
 
-	clk_prepare_enable(drvdata->clk_mlb6p);
-
 	c0_val |= (MLBC0_MLBPEN);
 	__raw_writel(c0_val, drvdata->membase + REG_MLBC0);
 }
@@ -1010,8 +1019,6 @@ static inline void mlb150_enable_pll(struct mlb_data *drvdata)
 static inline void mlb150_disable_pll(struct mlb_data *drvdata)
 {
 	u32 c0_val;
-
-	clk_disable_unprepare(drvdata->clk_mlb6p);
 
 	c0_val = __raw_readl(drvdata->membase + REG_MLBC0);
 
@@ -1511,14 +1518,15 @@ static s32 mlb150_trans_complete_check(struct mlb_dev_info *pdevinfo)
 	struct mlb_ringbuf *rx_rbuf = &pdevinfo->rx_rbuf;
 	struct mlb_ringbuf *tx_rbuf = &pdevinfo->tx_rbuf;
 	s32 timeout = 1024;
+	unsigned long flags;
 
 	while (timeout--) {
-		read_lock(&tx_rbuf->rb_lock);
+		read_lock_irqsave(&tx_rbuf->rb_lock, flags);
 		if (!CIRC_CNT(tx_rbuf->head, tx_rbuf->tail, TRANS_RING_NODES)) {
-			read_unlock(&tx_rbuf->rb_lock);
+			read_unlock_irqrestore(&tx_rbuf->rb_lock, flags);
 			break;
 		} else
-			read_unlock(&tx_rbuf->rb_lock);
+			read_unlock_irqrestore(&tx_rbuf->rb_lock, flags);
 	}
 
 	if (timeout <= 0) {
@@ -1528,12 +1536,12 @@ static s32 mlb150_trans_complete_check(struct mlb_dev_info *pdevinfo)
 
 	timeout = 1024;
 	while (timeout--) {
-		read_lock(&rx_rbuf->rb_lock);
+		read_lock_irqsave(&rx_rbuf->rb_lock, flags);
 		if (!CIRC_CNT(rx_rbuf->head, rx_rbuf->tail, TRANS_RING_NODES)) {
-			read_unlock(&rx_rbuf->rb_lock);
+			read_unlock_irqrestore(&rx_rbuf->rb_lock, flags);
 			break;
 		} else
-			read_unlock(&rx_rbuf->rb_lock);
+			read_unlock_irqrestore(&rx_rbuf->rb_lock, flags);
 	}
 
 	if (timeout <= 0) {
@@ -1558,12 +1566,14 @@ static void mxc_mlb150_irq_enable(struct mlb_data *drvdata, u8 enable)
 {
 	if (enable) {
 		enable_irq(drvdata->irq_ahb0);
-		enable_irq(drvdata->irq_ahb1);
 		enable_irq(drvdata->irq_mlb);
+		if (drvdata->irq_ahb1 > 0)
+			enable_irq(drvdata->irq_ahb1);
 	} else {
 		disable_irq(drvdata->irq_ahb0);
-		disable_irq(drvdata->irq_ahb1);
 		disable_irq(drvdata->irq_mlb);
+		if (drvdata->irq_ahb1 > 0)
+			disable_irq(drvdata->irq_ahb1);
 	}
 }
 
@@ -1827,7 +1837,7 @@ static irqreturn_t mlb_isr(int irq, void *dev_id)
 					cdt_val[1], cdt_val[0]);
 			switch (ctype) {
 			case MLB_CTYPE_SYNC:
-				tx_cis = (cdt_val[2] & ~CDT_SYNC_WSTS_MASK)
+				tx_cis = (cdt_val[2] & CDT_SYNC_WSTS_MASK)
 					>> CDT_SYNC_WSTS_SHIFT;
 				/*
 				 * Clear RSTS/WSTS errors to resume
@@ -1839,7 +1849,7 @@ static irqreturn_t mlb_isr(int irq, void *dev_id)
 			case MLB_CTYPE_CTRL:
 			case MLB_CTYPE_ASYNC:
 				tx_cis = (cdt_val[2] &
-					~CDT_CTRL_ASYNC_WSTS_MASK)
+					CDT_CTRL_ASYNC_WSTS_MASK)
 					>> CDT_CTRL_ASYNC_WSTS_SHIFT;
 				tx_cis = (cdt_val[3] & CDT_CTRL_ASYNC_WSTS_1) ?
 					(tx_cis | (0x1 << 4)) : tx_cis;
@@ -1853,7 +1863,7 @@ static irqreturn_t mlb_isr(int irq, void *dev_id)
 					~(0x4 << CDT_CTRL_ASYNC_WSTS_SHIFT);
 				break;
 			case MLB_CTYPE_ISOC:
-				tx_cis = (cdt_val[2] & ~CDT_ISOC_WSTS_MASK)
+				tx_cis = (cdt_val[2] & CDT_ISOC_WSTS_MASK)
 					>> CDT_ISOC_WSTS_SHIFT;
 				/* c. For isoc channels: WSTS[2:1] = 0x00 */
 				cdt_val[2] &= ~(0x6 << CDT_ISOC_WSTS_SHIFT);
@@ -1875,23 +1885,23 @@ static irqreturn_t mlb_isr(int irq, void *dev_id)
 					cdt_val[1], cdt_val[0]);
 			switch (ctype) {
 			case MLB_CTYPE_SYNC:
-				tx_cis = (cdt_val[2] & ~CDT_SYNC_RSTS_MASK)
+				rx_cis = (cdt_val[2] & CDT_SYNC_RSTS_MASK)
 					>> CDT_SYNC_RSTS_SHIFT;
 				cdt_val[2] &= ~(0x8 << CDT_SYNC_WSTS_SHIFT);
 				break;
 			case MLB_CTYPE_CTRL:
 			case MLB_CTYPE_ASYNC:
-				tx_cis =
-					(cdt_val[2] & ~CDT_CTRL_ASYNC_RSTS_MASK)
+				rx_cis =
+					(cdt_val[2] & CDT_CTRL_ASYNC_RSTS_MASK)
 					>> CDT_CTRL_ASYNC_RSTS_SHIFT;
-				tx_cis = (cdt_val[3] & CDT_CTRL_ASYNC_RSTS_1) ?
-					(tx_cis | (0x1 << 4)) : tx_cis;
+				rx_cis = (cdt_val[3] & CDT_CTRL_ASYNC_RSTS_1) ?
+					(rx_cis | (0x1 << 4)) : rx_cis;
 				cdt_val[3] &= ~CDT_CTRL_ASYNC_RSTS_1;
 				cdt_val[2] &=
 					~(0x4 << CDT_CTRL_ASYNC_RSTS_SHIFT);
 				break;
 			case MLB_CTYPE_ISOC:
-				tx_cis = (cdt_val[2] & ~CDT_ISOC_RSTS_MASK)
+				rx_cis = (cdt_val[2] & CDT_ISOC_RSTS_MASK)
 					>> CDT_ISOC_RSTS_SHIFT;
 				cdt_val[2] &= ~(0x6 << CDT_ISOC_WSTS_SHIFT);
 				break;
@@ -1916,14 +1926,15 @@ static irqreturn_t mlb_isr(int irq, void *dev_id)
 static int mxc_mlb150_open(struct inode *inode, struct file *filp)
 {
 	int minor, ring_buf_size, buf_size, j, ret;
-	void __iomem *buf_addr;
-	ulong phy_addr;
+	void  *buf_addr;
+	dma_addr_t phy_addr;
 	struct mlb_dev_info *pdevinfo = NULL;
 	struct mlb_channel_info *pchinfo = NULL;
 	struct mlb_data *drvdata;
 
 	minor = MINOR(inode->i_rdev);
 	drvdata = container_of(inode->i_cdev, struct mlb_data, cdev);
+	drvdata->use_iram = true;
 
 	if (minor < 0 || minor >= MLB_MINOR_DEVICES) {
 		pr_err("no device\n");
@@ -1936,7 +1947,11 @@ static int mxc_mlb150_open(struct inode *inode, struct file *filp)
 		return -EBUSY;
 	}
 
-	clk_prepare_enable(drvdata->clk_mlb3p);
+#ifdef CONFIG_ARCH_MXC_ARM64
+	clk_prepare_enable(drvdata->ipg);
+	clk_prepare_enable(drvdata->hclk);
+#endif
+	clk_prepare_enable(drvdata->mlb);
 
 	/* initial MLB module */
 	mlb150_dev_init();
@@ -1946,19 +1961,24 @@ static int mxc_mlb150_open(struct inode *inode, struct file *filp)
 
 	ring_buf_size = pdevinfo->buf_size;
 	buf_size = ring_buf_size * (TRANS_RING_NODES * 2);
-	buf_addr = (void __iomem *)gen_pool_alloc(drvdata->iram_pool, buf_size);
-	if (buf_addr == NULL) {
-		ret = -ENOMEM;
-		pr_err("can not alloc rx/tx buffers: %d\n", buf_size);
-		return ret;
+
+	buf_addr = gen_pool_dma_alloc(drvdata->iram_pool, buf_size, &phy_addr);
+	if (!buf_addr) {
+		drvdata->use_iram = false;
+		buf_addr = dma_alloc_coherent(drvdata->dev, buf_size, &phy_addr, GFP_KERNEL);
+		if (!buf_addr) {
+			ret = -ENOMEM;
+			pr_err("can not alloc rx/tx buffers: %d\n", buf_size);
+			return ret;
+		}
 	}
-	phy_addr = gen_pool_virt_to_phys(drvdata->iram_pool, (ulong)buf_addr);
+
 	pr_debug("IRAM Range: Virt 0x%p - 0x%p, Phys 0x%x - 0x%x, size: 0x%x\n",
 			buf_addr, (buf_addr + buf_size - 1), (u32)phy_addr,
 			(u32)(phy_addr + buf_size - 1), buf_size);
 	pdevinfo->rbuf_base_virt = buf_addr;
 	pdevinfo->rbuf_base_phy = phy_addr;
-	drvdata->iram_size = buf_size;
+	drvdata->iram_size = drvdata->use_iram ? buf_size : 0;
 
 	memset(buf_addr, 0, buf_size);
 
@@ -2013,18 +2033,19 @@ static int mxc_mlb150_release(struct inode *inode, struct file *filp)
 	mlb150_dev_dump_ctr_tbl(0, pdevinfo->channels[TX_CHANNEL].cl + 1);
 #endif
 
-	gen_pool_free(drvdata->iram_pool,
+	if (drvdata->use_iram)
+		gen_pool_free(drvdata->iram_pool,
 			(ulong)pdevinfo->rbuf_base_virt, drvdata->iram_size);
 
 	mlb150_dev_exit();
 
-	if (pdevinfo && atomic_read(&pdevinfo->on)
-		&& (pdevinfo->fps >= CLK_2048FS))
-		clk_disable_unprepare(drvdata->clk_mlb6p);
-
 	atomic_set(&pdevinfo->on, 0);
 
-	clk_disable_unprepare(drvdata->clk_mlb3p);
+	clk_disable_unprepare(drvdata->mlb);
+#ifdef CONFIG_ARCH_MXC_ARM64
+	clk_disable_unprepare(drvdata->hclk);
+	clk_disable_unprepare(drvdata->ipg);
+#endif
 	/* decrease the open count */
 	atomic_set(&pdevinfo->opencnt, 0);
 
@@ -2036,7 +2057,8 @@ static int mxc_mlb150_release(struct inode *inode, struct file *filp)
 static long mxc_mlb150_ioctl(struct file *filp,
 			 unsigned int cmd, unsigned long arg)
 {
-	struct inode *inode = filp->f_dentry->d_inode;
+	//struct inode *inode = filp->f_dentry->d_inode;
+	struct inode *inode = file_inode(filp);
 	struct mlb_data *drvdata = filp->private_data;
 	struct mlb_dev_info *pdevinfo = drvdata->devinfo;
 	void __user *argp = (void __user *)arg;
@@ -2316,9 +2338,8 @@ static ssize_t mxc_mlb150_read(struct file *filp, char __user *buf,
 	size = pdevinfo->adt_buf_dep;
 	if (size > count) {
 		/* the user buffer is too small */
-		pr_warning
-			("mxc_mlb150: received data size is bigger than "
-			"size: %d, count: %d\n", size, count);
+		pr_warn("mxc_mlb150: received data size is biggerthan size:"
+			"%d, count: %d\n", size, (int)count);
 		return -EINVAL;
 	}
 
@@ -2452,7 +2473,7 @@ static unsigned int mxc_mlb150_poll(struct file *filp,
 	unsigned long flags;
 
 
-	minor = MINOR(filp->f_dentry->d_inode->i_rdev);
+	minor = MINOR(file_inode(filp)->i_rdev);
 
 	poll_wait(filp, &pdevinfo->rx_wq, wait);
 	poll_wait(filp, &pdevinfo->tx_wq, wait);
@@ -2537,6 +2558,7 @@ static int mxc_mlb150_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
+	drvdata->dev = &pdev->dev;
 	of_id = of_match_device(mlb150_imx_dt_ids, &pdev->dev);
 	if (of_id)
 		pdev->id_entry = of_id->data;
@@ -2602,15 +2624,13 @@ static int mxc_mlb150_probe(struct platform_device *pdev)
 
 	/* ahb1 irq */
 	drvdata->irq_ahb1 = platform_get_irq(pdev,  2);
-	if (drvdata->irq_ahb1 < 0) {
-		dev_err(&pdev->dev, "No ahb1 irq line provided\n");
-		goto err_dev;
-	}
 	dev_dbg(&pdev->dev, "ahb1_irq: %d\n", drvdata->irq_ahb1);
-	if (devm_request_irq(&pdev->dev, drvdata->irq_ahb1, mlb_ahb_isr,
+	if (drvdata->irq_ahb1 > 0) {
+		if (devm_request_irq(&pdev->dev, drvdata->irq_ahb1, mlb_ahb_isr,
 				0, "mlb_ahb1", NULL)) {
-		dev_err(&pdev->dev, "can't claim irq %d\n", drvdata->irq_ahb1);
-		goto err_dev;
+			dev_err(&pdev->dev, "can't claim irq %d\n", drvdata->irq_ahb1);
+			goto err_dev;
+		}
 	}
 
 	/* mlb irq */
@@ -2633,8 +2653,7 @@ static int mxc_mlb150_probe(struct platform_device *pdev)
 		ret = -ENOENT;
 		goto err_dev;
 	}
-	mlb_base = devm_request_and_ioremap(&pdev->dev, res);
-	dev_dbg(&pdev->dev, "mapped base address: 0x%08x\n", (u32)mlb_base);
+	mlb_base = devm_ioremap_resource(&pdev->dev, res);
 	if (IS_ERR(mlb_base)) {
 		dev_err(&pdev->dev,
 			"failed to get ioremap base\n");
@@ -2643,29 +2662,45 @@ static int mxc_mlb150_probe(struct platform_device *pdev)
 	}
 	drvdata->membase = mlb_base;
 
-	/* enable clock */
-	drvdata->clk_mlb3p = devm_clk_get(&pdev->dev, "mlb");
-	if (IS_ERR(drvdata->clk_mlb3p)) {
-		dev_err(&pdev->dev, "unable to get mlb clock\n");
-		ret = PTR_ERR(drvdata->clk_mlb3p);
-		goto err_dev;
-	}
-
-	if (drvdata->quirk_flag & MLB_QUIRK_MLB150) {
-		drvdata->clk_mlb6p = devm_clk_get(&pdev->dev, "pll8_mlb");
-		if (IS_ERR(drvdata->clk_mlb6p)) {
-			dev_err(&pdev->dev, "unable to get mlb pll clock\n");
-			ret = PTR_ERR(drvdata->clk_mlb6p);
+#ifdef CONFIG_REGULATOR
+	drvdata->nvcc = devm_regulator_get(&pdev->dev, "reg_nvcc");
+	if (!IS_ERR(drvdata->nvcc)) {
+		regulator_set_voltage(drvdata->nvcc, 2500000, 2500000);
+		dev_err(&pdev->dev, "enalbe regulator\n");
+		ret = regulator_enable(drvdata->nvcc);
+		if (ret) {
+			dev_err(&pdev->dev, "vdd set voltage error\n");
 			goto err_dev;
 		}
 	}
+#endif
 
-	drvdata->iram_pool = of_get_named_gen_pool(np, "iram", 0);
-	if (!drvdata->iram_pool) {
-		dev_err(&pdev->dev, "iram pool not available\n");
-		ret = -ENOMEM;
+#ifdef CONFIG_ARCH_MXC_ARM64
+	drvdata->ipg = devm_clk_get(&pdev->dev, "ipg");
+	if (IS_ERR(drvdata->ipg)) {
+		dev_err(&pdev->dev, "unable to get mlb ipg clock\n");
+		ret = PTR_ERR(drvdata->ipg);
+		goto err_dev;
+	};
+
+	drvdata->hclk = devm_clk_get(&pdev->dev, "hclk");
+	if (IS_ERR(drvdata->hclk)) {
+		dev_err(&pdev->dev, "unable to get mlb hclk clock\n");
+		ret = PTR_ERR(drvdata->hclk);
+		goto err_dev;
+	};
+#endif
+
+	drvdata->mlb = devm_clk_get(&pdev->dev, "mlb");
+	if (IS_ERR(drvdata->mlb)) {
+		dev_err(&pdev->dev, "unable to get mlb clock\n");
+		ret = PTR_ERR(drvdata->mlb);
 		goto err_dev;
 	}
+
+	drvdata->iram_pool = of_gen_pool_get(np, "iram", 0);
+	if (!drvdata->iram_pool)
+		dev_warn(&pdev->dev, "no iram assigned, using external mem\n");
 
 	drvdata->devinfo = NULL;
 	mxc_mlb150_irq_enable(drvdata, 0);
@@ -2691,12 +2726,14 @@ static int mxc_mlb150_remove(struct platform_device *pdev)
 	struct mlb_data *drvdata = platform_get_drvdata(pdev);
 	struct mlb_dev_info *pdevinfo = drvdata->devinfo;
 
-	if (pdevinfo && atomic_read(&pdevinfo->on)
-		&& (pdevinfo->fps >= CLK_2048FS))
-		clk_disable_unprepare(drvdata->clk_mlb6p);
-
 	if (pdevinfo && atomic_read(&pdevinfo->opencnt))
-		clk_disable_unprepare(drvdata->clk_mlb3p);
+		clk_disable_unprepare(drvdata->mlb);
+
+	/* disable mlb power */
+#ifdef CONFIG_REGULATOR
+	if (!IS_ERR(drvdata->nvcc))
+		regulator_disable(drvdata->nvcc);
+#endif
 
 	/* destroy mlb device class */
 	for (i = MLB_MINOR_DEVICES - 1; i >= 0; i--)
@@ -2718,13 +2755,9 @@ static int mxc_mlb150_suspend(struct platform_device *pdev, pm_message_t state)
 	struct mlb_data *drvdata = platform_get_drvdata(pdev);
 	struct mlb_dev_info *pdevinfo = drvdata->devinfo;
 
-	if (pdevinfo && atomic_read(&pdevinfo->on)
-		&& (pdevinfo->fps >= CLK_2048FS))
-		clk_disable_unprepare(drvdata->clk_mlb6p);
-
 	if (pdevinfo && atomic_read(&pdevinfo->opencnt)) {
 		mlb150_dev_exit();
-		clk_disable_unprepare(drvdata->clk_mlb3p);
+		clk_disable_unprepare(drvdata->mlb);
 	}
 
 	return 0;
@@ -2736,13 +2769,9 @@ static int mxc_mlb150_resume(struct platform_device *pdev)
 	struct mlb_dev_info *pdevinfo = drvdata->devinfo;
 
 	if (pdevinfo && atomic_read(&pdevinfo->opencnt)) {
-		clk_prepare_enable(drvdata->clk_mlb3p);
+		clk_prepare_enable(drvdata->mlb);
 		mlb150_dev_init();
 	}
-
-	if (pdevinfo && atomic_read(&pdevinfo->on) &&
-		(pdevinfo->fps >= CLK_2048FS))
-		clk_prepare_enable(drvdata->clk_mlb6p);
 
 	return 0;
 }

@@ -33,14 +33,7 @@
 
 #ifdef	CONFIG_PM
 
-static int ehci_hub_control(
-	struct usb_hcd	*hcd,
-	u16		typeReq,
-	u16		wValue,
-	u16		wIndex,
-	char		*buf,
-	u16		wLength
-);
+static void unlink_empty_async_suspended(struct ehci_hcd *ehci);
 
 static int persist_enabled_on_companion(struct usb_device *udev, void *unused)
 {
@@ -164,7 +157,7 @@ static int ehci_port_change(struct ehci_hcd *ehci)
 	return 0;
 }
 
-static void ehci_adjust_port_wakeup_flags(struct ehci_hcd *ehci,
+void ehci_adjust_port_wakeup_flags(struct ehci_hcd *ehci,
 		bool suspending, bool do_wakeup)
 {
 	int		port;
@@ -229,6 +222,7 @@ static void ehci_adjust_port_wakeup_flags(struct ehci_hcd *ehci,
 
 	spin_unlock_irq(&ehci->lock);
 }
+EXPORT_SYMBOL_GPL(ehci_adjust_port_wakeup_flags);
 
 static int ehci_bus_suspend (struct usb_hcd *hcd)
 {
@@ -316,6 +310,14 @@ static int ehci_bus_suspend (struct usb_hcd *hcd)
 	}
 	spin_unlock_irq(&ehci->lock);
 
+	if (changed && ehci_has_fsl_susp_errata(ehci))
+		/*
+		 * Wait for at least 10 millisecondes to ensure the controller
+		 * enter the suspend status before initiating a port resume
+		 * using the Force Port Resume bit (Not-EHCI compatible).
+		 */
+		usleep_range(10000, 20000);
+
 	if ((changed && ehci->has_tdi_phy_lpm) || fs_idle_delay) {
 		/*
 		 * Wait for HCD to enter low-power mode or for the bus
@@ -355,8 +357,10 @@ static int ehci_bus_suspend (struct usb_hcd *hcd)
 		goto done;
 	ehci->rh_state = EHCI_RH_SUSPENDED;
 
-	end_unlink_async(ehci);
 	unlink_empty_async_suspended(ehci);
+
+	/* Any IAA cycle that started before the suspend is now invalid */
+	end_iaa_cycle(ehci);
 	ehci_handle_start_intr_unlinks(ehci);
 	ehci_handle_intr_unlinks(ehci);
 	end_free_itds(ehci);
@@ -666,7 +670,7 @@ ehci_hub_status_data (struct usb_hcd *hcd, char *buf)
 
 		/*
 		 * Return status information even for ports with OWNER set.
-		 * Otherwise khubd wouldn't see the disconnect event when a
+		 * Otherwise hub_wq wouldn't see the disconnect event when a
 		 * high-speed device is switched over to the companion
 		 * controller by the user.
 		 */
@@ -700,7 +704,7 @@ ehci_hub_descriptor (
 	int		ports = HCS_N_PORTS (ehci->hcs_params);
 	u16		temp;
 
-	desc->bDescriptorType = 0x29;
+	desc->bDescriptorType = USB_DT_HUB;
 	desc->bPwrOn2PwrGood = 10;	/* ehci 1.0, 2.3.9 says 20ms max */
 	desc->bHubContrCurrent = 0;
 
@@ -712,161 +716,22 @@ ehci_hub_descriptor (
 	memset(&desc->u.hs.DeviceRemovable[0], 0, temp);
 	memset(&desc->u.hs.DeviceRemovable[temp], 0xff, temp);
 
-	temp = 0x0008;			/* per-port overcurrent reporting */
+	temp = HUB_CHAR_INDV_PORT_OCPM;	/* per-port overcurrent reporting */
 	if (HCS_PPC (ehci->hcs_params))
-		temp |= 0x0001;		/* per-port power control */
+		temp |= HUB_CHAR_INDV_PORT_LPSM; /* per-port power control */
 	else
-		temp |= 0x0002;		/* no power switching */
+		temp |= HUB_CHAR_NO_LPSM; /* no power switching */
 #if 0
 // re-enable when we support USB_PORT_FEAT_INDICATOR below.
 	if (HCS_INDICATOR (ehci->hcs_params))
-		temp |= 0x0080;		/* per-port indicators (LEDs) */
+		temp |= HUB_CHAR_PORTIND; /* per-port indicators (LEDs) */
 #endif
 	desc->wHubCharacteristics = cpu_to_le16(temp);
 }
 
 /*-------------------------------------------------------------------------*/
-#ifdef CONFIG_USB_HCD_TEST_MODE
 
-#define EHSET_TEST_SINGLE_STEP_SET_FEATURE 0x06
-
-static void usb_ehset_completion(struct urb *urb)
-{
-	struct completion  *done = urb->context;
-
-	complete(done);
-}
-static int submit_single_step_set_feature(
-	struct usb_hcd	*hcd,
-	struct urb	*urb,
-	int		is_setup
-);
-
-/*
- * Allocate and initialize a control URB. This request will be used by the
- * EHSET SINGLE_STEP_SET_FEATURE test in which the DATA and STATUS stages
- * of the GetDescriptor request are sent 15 seconds after the SETUP stage.
- * Return NULL if failed.
- */
-static struct urb *request_single_step_set_feature_urb(
-	struct usb_device	*udev,
-	void			*dr,
-	void			*buf,
-	struct completion	*done
-) {
-	struct urb *urb;
-	struct usb_hcd *hcd = bus_to_hcd(udev->bus);
-	struct usb_host_endpoint *ep;
-
-	urb = usb_alloc_urb(0, GFP_KERNEL);
-	if (!urb)
-		return NULL;
-
-	urb->pipe = usb_rcvctrlpipe(udev, 0);
-	ep = (usb_pipein(urb->pipe) ? udev->ep_in : udev->ep_out)
-				[usb_pipeendpoint(urb->pipe)];
-	if (!ep) {
-		usb_free_urb(urb);
-		return NULL;
-	}
-
-	urb->ep = ep;
-	urb->dev = udev;
-	urb->setup_packet = (void *)dr;
-	urb->transfer_buffer = buf;
-	urb->transfer_buffer_length = USB_DT_DEVICE_SIZE;
-	urb->complete = usb_ehset_completion;
-	urb->status = -EINPROGRESS;
-	urb->actual_length = 0;
-	urb->transfer_flags = URB_DIR_IN;
-	usb_get_urb(urb);
-	atomic_inc(&urb->use_count);
-	atomic_inc(&urb->dev->urbnum);
-	urb->setup_dma = dma_map_single(
-			hcd->self.controller,
-			urb->setup_packet,
-			sizeof(struct usb_ctrlrequest),
-			DMA_TO_DEVICE);
-	urb->transfer_dma = dma_map_single(
-			hcd->self.controller,
-			urb->transfer_buffer,
-			urb->transfer_buffer_length,
-			DMA_FROM_DEVICE);
-	urb->context = done;
-	return urb;
-}
-
-static int ehset_single_step_set_feature(struct usb_hcd *hcd, int port)
-{
-	int retval = -ENOMEM;
-	struct usb_ctrlrequest *dr;
-	struct urb *urb;
-	struct usb_device *udev;
-	struct ehci_hcd *ehci = hcd_to_ehci(hcd);
-	struct usb_device_descriptor *buf;
-	DECLARE_COMPLETION_ONSTACK(done);
-
-	/* Obtain udev of the rhub's child port */
-	udev = usb_hub_find_child(hcd->self.root_hub, port);
-	if (!udev) {
-		ehci_err(ehci, "No device attached to the RootHub\n");
-		return -ENODEV;
-	}
-	buf = kmalloc(USB_DT_DEVICE_SIZE, GFP_KERNEL);
-	if (!buf)
-		return -ENOMEM;
-
-	dr = kmalloc(sizeof(struct usb_ctrlrequest), GFP_KERNEL);
-	if (!dr) {
-		kfree(buf);
-		return -ENOMEM;
-	}
-
-	/* Fill Setup packet for GetDescriptor */
-	dr->bRequestType = USB_DIR_IN;
-	dr->bRequest = USB_REQ_GET_DESCRIPTOR;
-	dr->wValue = cpu_to_le16(USB_DT_DEVICE << 8);
-	dr->wIndex = 0;
-	dr->wLength = cpu_to_le16(USB_DT_DEVICE_SIZE);
-	urb = request_single_step_set_feature_urb(udev, dr, buf, &done);
-	if (!urb)
-		goto cleanup;
-
-	/* Submit just the SETUP stage */
-	retval = submit_single_step_set_feature(hcd, urb, 1);
-	if (retval)
-		goto out1;
-	if (!wait_for_completion_timeout(&done, msecs_to_jiffies(2000))) {
-		usb_kill_urb(urb);
-		retval = -ETIMEDOUT;
-		ehci_err(ehci, "%s SETUP stage timed out on ep0\n", __func__);
-		goto out1;
-	}
-	msleep(15 * 1000);
-
-	/* Complete remaining DATA and STATUS stages using the same URB */
-	urb->status = -EINPROGRESS;
-	usb_get_urb(urb);
-	atomic_inc(&urb->use_count);
-	atomic_inc(&urb->dev->urbnum);
-	retval = submit_single_step_set_feature(hcd, urb, 0);
-	if (!retval && !wait_for_completion_timeout(&done,
-						msecs_to_jiffies(2000))) {
-		usb_kill_urb(urb);
-		retval = -ETIMEDOUT;
-		ehci_err(ehci, "%s IN stage timed out on ep0\n", __func__);
-	}
-out1:
-	usb_free_urb(urb);
-cleanup:
-	kfree(dr);
-	kfree(buf);
-	return retval;
-}
-#endif /* CONFIG_USB_HCD_TEST_MODE */
-/*-------------------------------------------------------------------------*/
-
-static int ehci_hub_control (
+int ehci_hub_control(
 	struct usb_hcd	*hcd,
 	u16		typeReq,
 	u16		wValue,
@@ -876,13 +741,21 @@ static int ehci_hub_control (
 ) {
 	struct ehci_hcd	*ehci = hcd_to_ehci (hcd);
 	int		ports = HCS_N_PORTS (ehci->hcs_params);
-	u32 __iomem	*status_reg = &ehci->regs->port_status[
-				(wIndex & 0xff) - 1];
-	u32 __iomem	*hostpc_reg = &ehci->regs->hostpc[(wIndex & 0xff) - 1];
+	u32 __iomem	*status_reg, *hostpc_reg;
 	u32		temp, temp1, status;
 	unsigned long	flags;
 	int		retval = 0;
 	unsigned	selector;
+
+	/*
+	 * Avoid underflow while calculating (wIndex & 0xff) - 1.
+	 * The compiler might deduce that wIndex can never be 0 and then
+	 * optimize away the tests for !wIndex below.
+	 */
+	temp = wIndex & 0xff;
+	temp -= (temp > 0);
+	status_reg = &ehci->regs->port_status[temp];
+	hostpc_reg = &ehci->regs->hostpc[temp];
 
 	/*
 	 * FIXME:  support SetPortFeatures USB_PORT_FEAT_INDICATOR.
@@ -912,7 +785,7 @@ static int ehci_hub_control (
 
 		/*
 		 * Even if OWNER is set, so the port is owned by the
-		 * companion controller, khubd needs to be able to clear
+		 * companion controller, hub_wq needs to be able to clear
 		 * the port-change status bits (especially
 		 * USB_PORT_STAT_C_CONNECTION).
 		 */
@@ -931,7 +804,7 @@ static int ehci_hub_control (
 				break;
 #ifdef CONFIG_USB_OTG
 			if ((hcd->self.otg_port == (wIndex + 1))
-			    && hcd->self.b_hnp_enable) {
+			    && hcd->self.b_hnp_enable && !hcd->self.otg_fsm) {
 				otg_start_hnp(hcd->usb_phy->otg);
 				break;
 			}
@@ -1012,7 +885,7 @@ static int ehci_hub_control (
 			 * However, not all EHCI implementations do this
 			 * automatically, even if they _do_ support per-port
 			 * power switching; they're allowed to just limit the
-			 * current.  khubd will turn the power back on.
+			 * current.  hub_wq will turn the power back on.
 			 */
 			if (((temp & PORT_OC) || (ehci->need_oc_pp_cycle))
 					&& HCS_PPC(ehci->hcs_params)) {
@@ -1097,7 +970,7 @@ static int ehci_hub_control (
 		}
 
 		/*
-		 * Even if OWNER is set, there's no harm letting khubd
+		 * Even if OWNER is set, there's no harm letting hub_wq
 		 * see the wPortStatus values (they should all be 0 except
 		 * for PORT_POWER anyway).
 		 */
@@ -1196,6 +1069,12 @@ static int ehci_hub_control (
 					wIndex, (temp1 & HOSTPC_PHCD) ?
 					"succeeded" : "failed");
 			}
+			if (ehci_has_fsl_susp_errata(ehci)) {
+				/* 10ms for HCD enter suspend */
+				spin_unlock_irqrestore(&ehci->lock, flags);
+				usleep_range(10000, 20000);
+				spin_lock_irqsave(&ehci->lock, flags);
+			}
 			set_bit(wIndex, &ehci->suspended_ports);
 			break;
 		case USB_PORT_FEAT_POWER:
@@ -1229,6 +1108,13 @@ static int ehci_hub_control (
 				 */
 				ehci->reset_done [wIndex] = jiffies
 						+ msecs_to_jiffies (50);
+
+				/*
+				 * Force full-speed connect for FSL high-speed
+				 * erratum; disable HS Chirp by setting PFSC bit
+				 */
+				if (ehci_has_fsl_hs_errata(ehci))
+					temp |= (1 << PORTSC_FSL_PFSC);
 			}
 			ehci_writel(ehci, temp, status_reg);
 			break;
@@ -1290,6 +1176,7 @@ error_exit:
 	spin_unlock_irqrestore (&ehci->lock, flags);
 	return retval;
 }
+EXPORT_SYMBOL_GPL(ehci_hub_control);
 
 static void ehci_relinquish_port(struct usb_hcd *hcd, int portnum)
 {

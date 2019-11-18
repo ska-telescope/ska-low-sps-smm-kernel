@@ -21,6 +21,7 @@
 #include <linux/slab.h>
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
+#include <linux/regmap.h>
 #include <sound/soc.h>
 #include <sound/initval.h>
 
@@ -166,17 +167,17 @@ static int si476x_codec_hw_params(struct snd_pcm_substream *substream,
 		return -EINVAL;
 	}
 
-	switch (params_format(params)) {
-	case SNDRV_PCM_FORMAT_S8:
+	switch (params_width(params)) {
+	case 8:
 		width = SI476X_PCM_FORMAT_S8;
 		break;
-	case SNDRV_PCM_FORMAT_S16_LE:
+	case 16:
 		width = SI476X_PCM_FORMAT_S16_LE;
 		break;
-	case SNDRV_PCM_FORMAT_S20_3LE:
+	case 20:
 		width = SI476X_PCM_FORMAT_S20_3LE;
 		break;
-	case SNDRV_PCM_FORMAT_S24_LE:
+	case 24:
 		width = SI476X_PCM_FORMAT_S24_LE;
 		break;
 	default:
@@ -207,15 +208,28 @@ out:
 	return err;
 }
 
-static int si476x_codec_probe(struct snd_soc_codec *codec)
-{
-	codec->control_data = dev_get_regmap(codec->dev->parent, NULL);
-	return snd_soc_codec_set_cache_io(codec, 0, 0, SND_SOC_REGMAP);
+static int si476x_codec_startup(struct snd_pcm_substream *substream,
+					struct snd_soc_dai *dai) {
+	struct si476x_core *core = i2c_mfd_cell_to_core(dai->dev);
+
+	if (!si476x_core_is_powered_up(core))
+		si476x_core_set_power_state(core, SI476X_POWER_UP_FULL);
+	return 0;
 }
 
-static struct snd_soc_dai_ops si476x_dai_ops = {
+static void si476x_codec_shutdown(struct snd_pcm_substream *substream,
+					struct snd_soc_dai *dai) {
+	struct si476x_core *core = i2c_mfd_cell_to_core(dai->dev);
+
+	if (si476x_core_is_powered_up(core))
+		si476x_core_set_power_state(core, SI476X_POWER_DOWN);
+}
+
+static const struct snd_soc_dai_ops si476x_dai_ops = {
 	.hw_params	= si476x_codec_hw_params,
 	.set_fmt	= si476x_codec_set_dai_fmt,
+	.startup        = si476x_codec_startup,
+	.shutdown       = si476x_codec_shutdown,
 };
 
 static struct snd_soc_dai_driver si476x_dai = {
@@ -236,12 +250,19 @@ static struct snd_soc_dai_driver si476x_dai = {
 	.ops		= &si476x_dai_ops,
 };
 
-static struct snd_soc_codec_driver soc_codec_dev_si476x = {
-	.probe  = si476x_codec_probe,
-	.dapm_widgets = si476x_dapm_widgets,
-	.num_dapm_widgets = ARRAY_SIZE(si476x_dapm_widgets),
-	.dapm_routes = si476x_dapm_routes,
-	.num_dapm_routes = ARRAY_SIZE(si476x_dapm_routes),
+static struct regmap *si476x_get_regmap(struct device *dev)
+{
+	return dev_get_regmap(dev->parent, NULL);
+}
+
+static const struct snd_soc_codec_driver soc_codec_dev_si476x = {
+	.get_regmap = si476x_get_regmap,
+	.component_driver = {
+		.dapm_widgets		= si476x_dapm_widgets,
+		.num_dapm_widgets	= ARRAY_SIZE(si476x_dapm_widgets),
+		.dapm_routes		= si476x_dapm_routes,
+		.num_dapm_routes	= ARRAY_SIZE(si476x_dapm_routes),
+	},
 };
 
 static int si476x_platform_probe(struct platform_device *pdev)
@@ -261,7 +282,6 @@ MODULE_ALIAS("platform:si476x-codec");
 static struct platform_driver si476x_platform_driver = {
 	.driver		= {
 		.name	= "si476x-codec",
-		.owner	= THIS_MODULE,
 	},
 	.probe		= si476x_platform_probe,
 	.remove		= si476x_platform_remove,

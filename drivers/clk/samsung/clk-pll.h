@@ -13,6 +13,8 @@
 #define __SAMSUNG_CLK_PLL_H
 
 enum samsung_pll_type {
+	pll_2126,
+	pll_3000,
 	pll_35xx,
 	pll_36xx,
 	pll_2550,
@@ -24,7 +26,19 @@ enum samsung_pll_type {
 	pll_4650,
 	pll_4650c,
 	pll_6552,
+	pll_6552_s3c2416,
 	pll_6553,
+	pll_s3c2410_mpll,
+	pll_s3c2410_upll,
+	pll_s3c2440_mpll,
+	pll_2550x,
+	pll_2550xx,
+	pll_2650x,
+	pll_2650xx,
+	pll_1450x,
+	pll_1451x,
+	pll_1452x,
+	pll_1460x,
 };
 
 #define PLL_35XX_RATE(_rate, _m, _p, _s)			\
@@ -88,9 +102,5 @@ struct samsung_pll_rate_table {
 	unsigned int mrr;
 	unsigned int vsel;
 };
-
-extern struct clk * __init samsung_clk_register_pll2550x(const char *name,
-			const char *pname, const void __iomem *reg_base,
-			const unsigned long offset);
 
 #endif /* __SAMSUNG_CLK_PLL_H */

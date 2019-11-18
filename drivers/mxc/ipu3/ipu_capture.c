@@ -1,5 +1,5 @@
 /*
- * Copyright 2008-2014 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2008-2015 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -43,7 +43,7 @@
 int _ipu_csi_mclk_set(struct ipu_soc *ipu, uint32_t pixel_clk, uint32_t csi)
 {
 	uint32_t temp;
-	uint32_t div_ratio;
+	int32_t div_ratio;
 
 	div_ratio = (clk_get_rate(ipu->ipu_clk) / pixel_clk) - 1;
 
@@ -100,8 +100,6 @@ ipu_csi_init_interface(struct ipu_soc *ipu, uint16_t width, uint16_t height,
 		break;
 	case IPU_PIX_FMT_GENERIC:
 	case IPU_PIX_FMT_GENERIC_16:
-	case IPU_PIX_FMT_Y16:
-	case IPU_PIX_FMT_GREY:
 		cfg_param.data_fmt = CSI_SENS_CONF_DATA_FMT_BAYER;
 		break;
 	case IPU_PIX_FMT_RGB565:
@@ -428,13 +426,6 @@ void _ipu_csi_set_test_generator(struct ipu_soc *ipu, bool active, uint32_t r_va
 		ipu_csi_write(ipu, csi, temp, CSI_TST_CTRL);
 	}
 }
-
-void ipu_csi_set_test_generator(struct ipu_soc *ipu, bool active, uint32_t r_value,
-	uint32_t g_value, uint32_t b_value, uint32_t pix_clk, uint32_t csi)
-{
-	_ipu_csi_set_test_generator(ipu, active, r_value, g_value, b_value, pix_clk, csi);
-}
-EXPORT_SYMBOL(ipu_csi_set_test_generator);
 
 /*!
  * _ipu_csi_ccir_err_detection_en

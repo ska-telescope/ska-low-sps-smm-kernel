@@ -242,7 +242,7 @@ static struct sk_buff *cfv_alloc_and_copy_skb(int *err,
 
 	skb_reserve(skb, cfv->rx_hr + pad_len);
 
-	memcpy(skb_put(skb, cfpkt_len), frm + cfv->rx_hr, cfpkt_len);
+	skb_put_data(skb, frm + cfv->rx_hr, cfpkt_len);
 	return skb;
 }
 
@@ -257,7 +257,6 @@ static int cfv_rx_poll(struct napi_struct *napi, int quota)
 	struct vringh_kiov *riov = &cfv->ctx.riov;
 	unsigned int skb_len;
 
-again:
 	do {
 		skb = NULL;
 
@@ -322,7 +321,6 @@ exit:
 		    napi_schedule_prep(napi)) {
 			vringh_notify_disable_kern(cfv->vr_rx);
 			__napi_schedule(napi);
-			goto again;
 		}
 		break;
 
@@ -619,7 +617,7 @@ static void cfv_netdev_setup(struct net_device *netdev)
 	netdev->tx_queue_len = 100;
 	netdev->flags = IFF_POINTOPOINT | IFF_NOARP;
 	netdev->mtu = CFV_DEF_MTU_SIZE;
-	netdev->destructor = free_netdev;
+	netdev->needs_free_netdev = true;
 }
 
 /* Create debugfs counters for the device */
@@ -661,7 +659,7 @@ static int cfv_probe(struct virtio_device *vdev)
 	int err = -EINVAL;
 
 	netdev = alloc_netdev(sizeof(struct cfv_info), cfv_netdev_name,
-			      cfv_netdev_setup);
+			      NET_NAME_UNKNOWN, cfv_netdev_setup);
 	if (!netdev)
 		return -ENOMEM;
 
@@ -681,7 +679,7 @@ static int cfv_probe(struct virtio_device *vdev)
 		goto err;
 
 	/* Get the TX virtio ring. This is a "guest side vring". */
-	err = vdev->config->find_vqs(vdev, 1, &cfv->vq_tx, &vq_cbs, &names);
+	err = virtio_find_vqs(vdev, 1, &cfv->vq_tx, &vq_cbs, &names, NULL);
 	if (err)
 		goto err;
 

@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 #ifndef NET_COMPAT_H
 #define NET_COMPAT_H
 
@@ -40,9 +41,9 @@ int compat_sock_get_timestampns(struct sock *, struct timespec __user *);
 #define compat_mmsghdr	mmsghdr
 #endif /* defined(CONFIG_COMPAT) */
 
-int get_compat_msghdr(struct msghdr *, struct compat_msghdr __user *);
-int verify_compat_iovec(struct msghdr *, struct iovec *,
-			struct sockaddr_storage *, int);
+int get_compat_msghdr(struct msghdr *, struct compat_msghdr __user *,
+		      struct sockaddr __user **, struct iovec **);
+struct sock_fprog __user *get_compat_bpf_fprog(char __user *optval);
 asmlinkage long compat_sys_sendmsg(int, struct compat_msghdr __user *,
 				   unsigned int);
 asmlinkage long compat_sys_sendmmsg(int, struct compat_mmsghdr __user *,

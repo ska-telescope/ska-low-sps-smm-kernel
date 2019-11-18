@@ -1,20 +1,54 @@
 /****************************************************************************
 *
-*    Copyright (C) 2005 - 2014 by Vivante Corp.
+*    The MIT License (MIT)
 *
-*    This program is free software; you can redistribute it and/or modify
-*    it under the terms of the GNU General Public License as published by
-*    the Free Software Foundation; either version 2 of the license, or
-*    (at your option) any later version.
+*    Copyright (c) 2014 - 2018 Vivante Corporation
+*
+*    Permission is hereby granted, free of charge, to any person obtaining a
+*    copy of this software and associated documentation files (the "Software"),
+*    to deal in the Software without restriction, including without limitation
+*    the rights to use, copy, modify, merge, publish, distribute, sublicense,
+*    and/or sell copies of the Software, and to permit persons to whom the
+*    Software is furnished to do so, subject to the following conditions:
+*
+*    The above copyright notice and this permission notice shall be included in
+*    all copies or substantial portions of the Software.
+*
+*    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+*    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+*    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+*    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+*    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+*    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+*    DEALINGS IN THE SOFTWARE.
+*
+*****************************************************************************
+*
+*    The GPL License (GPL)
+*
+*    Copyright (C) 2014 - 2018 Vivante Corporation
+*
+*    This program is free software; you can redistribute it and/or
+*    modify it under the terms of the GNU General Public License
+*    as published by the Free Software Foundation; either version 2
+*    of the License, or (at your option) any later version.
 *
 *    This program is distributed in the hope that it will be useful,
 *    but WITHOUT ANY WARRANTY; without even the implied warranty of
-*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 *    GNU General Public License for more details.
 *
 *    You should have received a copy of the GNU General Public License
-*    along with this program; if not write to the Free Software
-*    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+*    along with this program; if not, write to the Free Software Foundation,
+*    Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+*
+*****************************************************************************
+*
+*    Note: This software is released under dual MIT and GPL licenses. A
+*    recipient may use this file under the terms of either the MIT license or
+*    GPL License. If you wish to use only one license not the other, you can
+*    indicate your decision by deleting one of the above license notices in your
+*    version of this file.
 *
 *****************************************************************************/
 
@@ -111,6 +145,7 @@ typedef struct _gcsPARSER
     gctUINT32           skipCount;
 
     gctBOOL             allow;
+    gctBOOL             stop;
 
     /* Callback used by parser to handle a command. */
     gckPARSER_HANDLER   commandHandler;
@@ -122,7 +157,7 @@ typedef struct _gcsMIRROR
     gctUINT32_PTR       logical[gcdNUM_RECORDS];
     gctUINT32           bytes;
     gcsSTATE_MAP_PTR    map;
-    gctUINT32           stateCount;
+    gctSIZE_T           maxState;
 }
 gcsMIRROR;
 
@@ -207,14 +242,14 @@ _GetCommand(
     Parser->hi = buffer[0];
     Parser->lo = buffer[1];
 
-    Parser->cmdOpcode = (((((gctUINT32) (Parser->hi)) >> (0 ? 31:27)) & ((gctUINT32) ((((1 ? 31:27) - (0 ? 31:27) + 1) == 32) ? ~0 : (~(~0 << ((1 ? 31:27) - (0 ? 31:27) + 1)))))) );
+    Parser->cmdOpcode = (((((gctUINT32) (Parser->hi)) >> (0 ? 31:27)) & ((gctUINT32) ((((1 ? 31:27) - (0 ? 31:27) + 1) == 32) ? ~0U : (~(~0U << ((1 ? 31:27) - (0 ? 31:27) + 1)))))) );
     Parser->cmdRectCount = 1;
 
     switch (Parser->cmdOpcode)
     {
     case 0x01:
         /* Extract count. */
-        Parser->cmdSize = (((((gctUINT32) (Parser->hi)) >> (0 ? 25:16)) & ((gctUINT32) ((((1 ? 25:16) - (0 ? 25:16) + 1) == 32) ? ~0 : (~(~0 << ((1 ? 25:16) - (0 ? 25:16) + 1)))))) );
+        Parser->cmdSize = (((((gctUINT32) (Parser->hi)) >> (0 ? 25:16)) & ((gctUINT32) ((((1 ? 25:16) - (0 ? 25:16) + 1) == 32) ? ~0U : (~(~0U << ((1 ? 25:16) - (0 ? 25:16) + 1)))))) );
         if (Parser->cmdSize == 0)
         {
             /* 0 means 1024. */
@@ -223,7 +258,7 @@ _GetCommand(
         Parser->skip = (Parser->cmdSize & 0x1) ? 0 : 1;
 
         /* Extract address. */
-        Parser->cmdAddr = (((((gctUINT32) (Parser->hi)) >> (0 ? 15:0)) & ((gctUINT32) ((((1 ? 15:0) - (0 ? 15:0) + 1) == 32) ? ~0 : (~(~0 << ((1 ? 15:0) - (0 ? 15:0) + 1)))))) );
+        Parser->cmdAddr = (((((gctUINT32) (Parser->hi)) >> (0 ? 15:0)) & ((gctUINT32) ((((1 ? 15:0) - (0 ? 15:0) + 1) == 32) ? ~0U : (~(~0U << ((1 ? 15:0) - (0 ? 15:0) + 1)))))) );
 
         Parser->currentCmdBufferAddr = Parser->currentCmdBufferAddr + 4;
         Parser->skipCount = Parser->cmdSize + Parser->skip;
@@ -254,8 +289,8 @@ _GetCommand(
         Parser->cmdSize = 1;
         Parser->cmdAddr = 0x0F06;
 
-        cmdRectCount = (((((gctUINT32) (Parser->hi)) >> (0 ? 15:8)) & ((gctUINT32) ((((1 ? 15:8) - (0 ? 15:8) + 1) == 32) ? ~0 : (~(~0 << ((1 ? 15:8) - (0 ? 15:8) + 1)))))) );
-        cmdDataCount = (((((gctUINT32) (Parser->hi)) >> (0 ? 26:16)) & ((gctUINT32) ((((1 ? 26:16) - (0 ? 26:16) + 1) == 32) ? ~0 : (~(~0 << ((1 ? 26:16) - (0 ? 26:16) + 1)))))) );
+        cmdRectCount = (((((gctUINT32) (Parser->hi)) >> (0 ? 15:8)) & ((gctUINT32) ((((1 ? 15:8) - (0 ? 15:8) + 1) == 32) ? ~0U : (~(~0U << ((1 ? 15:8) - (0 ? 15:8) + 1)))))) );
+        cmdDataCount = (((((gctUINT32) (Parser->hi)) >> (0 ? 26:16)) & ((gctUINT32) ((((1 ? 26:16) - (0 ? 26:16) + 1) == 32) ? ~0U : (~(~0U << ((1 ? 26:16) - (0 ? 26:16) + 1)))))) );
 
         Parser->skipCount = gcmALIGN(Parser->cmdSize, 2)
                           + cmdRectCount * 2
@@ -272,6 +307,16 @@ _GetCommand(
     case 0x02:
         Parser->currentCmdBufferAddr = Parser->currentCmdBufferAddr + 8;
         Parser->skipCount = 0;
+        break;
+
+    case 0x07:
+        Parser->currentCmdBufferAddr = Parser->currentCmdBufferAddr + 8;
+        Parser->skipCount = 0;
+        break;
+
+    case 0x08:
+        /* Commands after LINK isn't executed, skip them. */
+        Parser->stop = gcvTRUE;
         break;
 
     default:
@@ -320,6 +365,7 @@ gckPARSER_Parse(
     parser->currentCmdBufferAddr = (gctUINT8_PTR)Buffer;
     parser->skip = 0;
     parser->allow = gcvTRUE;
+    parser->stop  = gcvFALSE;
 
     /* Go through command buffer until reaching the end
     ** or meeting an error. */
@@ -329,7 +375,10 @@ gckPARSER_Parse(
 
         _ParseCommand(parser);
     }
-    while ((parser->currentCmdBufferAddr < end) && (parser->allow == gcvTRUE));
+    while ((parser->currentCmdBufferAddr < end)
+        && (parser->allow == gcvTRUE)
+        && (parser->stop == gcvFALSE)
+        );
 
     if (parser->allow == gcvFALSE)
     {
@@ -435,14 +484,9 @@ gckRECORDER_Construct(
     gceSTATUS status;
     gckCONTEXT context = gcvNULL;
     gckRECORDER recorder = gcvNULL;
-    gctUINT32 mapSize;
+    gctSIZE_T mapSize;
     gctUINT i;
     gctBOOL virtualCommandBuffer = Hardware->kernel->virtualCommandBuffer;
-
-    /* TODO: We only need context buffer and state map, it should be able to get without construct a
-    ** new context.
-    ** Now it is leaked, since we can't free it when command buffer is gone.
-    */
 
     /* MMU is not ready now. */
     Hardware->kernel->virtualCommandBuffer = gcvFALSE;
@@ -457,9 +501,9 @@ gckRECORDER_Construct(
     gckOS_ZeroMemory(recorder, gcmSIZEOF(gcsRECORDER));
 
     /* Copy state map. */
-    recorder->mirror.stateCount = context->stateCount;
+    recorder->mirror.maxState = context->maxState;
 
-    mapSize = context->stateCount * gcmSIZEOF(gcsSTATE_MAP);
+    mapSize = context->maxState * gcmSIZEOF(gcsSTATE_MAP);
 
     gcmkONERROR(gckOS_Allocate(Os, mapSize, (gctPOINTER *)&recorder->mirror.map));
 
@@ -476,7 +520,6 @@ gckRECORDER_Construct(
 
     for (i = 0; i < gcdNUM_RECORDS; i++)
     {
-        /* TODO : Optimize size. */
         gcmkONERROR(gckOS_Allocate(Os, gcdCMD_BUFFER_SIZE, (gctPOINTER *)&recorder->deltas[i].command));
         gcmkONERROR(gckOS_Allocate(Os, context->totalSize, (gctPOINTER *)&recorder->deltas[i].context));
     }
@@ -495,9 +538,15 @@ gckRECORDER_Construct(
 
     *Recorder = recorder;
 
+    gckCONTEXT_Destroy(context);
     return gcvSTATUS_OK;
 
 OnError:
+    if (context)
+    {
+        gckCONTEXT_Destroy(context);
+    }
+
     if (recorder)
     {
         gckRECORDER_Destory(Os, recorder);
@@ -561,7 +610,7 @@ gckRECORDER_UpdateMirror(
     gcsSTATE_MAP_PTR map = Recorder->mirror.map;
     gctUINT32_PTR buffer = Recorder->mirror.logical[Recorder->index];
 
-    if (State >= Recorder->mirror.stateCount)
+    if (State >= Recorder->mirror.maxState)
     {
         /* Ignore them just like HW does. */
         return gcvSTATUS_OK;
@@ -659,17 +708,17 @@ gckRECORDER_Dump(
             previous = _Previous(last);
 
             gcmkPRINT("#[mirror]");
-            gckOS_DumpBuffer(os, mirror->logical[previous], mirror->bytes, gceDUMP_BUFFER_CONTEXT, gcvTRUE);
+            gckOS_DumpBuffer(os, mirror->logical[previous], mirror->bytes, gcvDUMP_BUFFER_CONTEXT, gcvTRUE);
             gcmkPRINT("@[kernel.execute]");
         }
 
         if (delta->contextBytes)
         {
-            gckOS_DumpBuffer(os, delta->context, delta->contextBytes, gceDUMP_BUFFER_CONTEXT, gcvTRUE);
+            gckOS_DumpBuffer(os, delta->context, delta->contextBytes, gcvDUMP_BUFFER_CONTEXT, gcvTRUE);
             gcmkPRINT("@[kernel.execute]");
         }
 
-        gckOS_DumpBuffer(os, delta->command, delta->commandBytes, gceDUMP_BUFFER_USER, gcvTRUE);
+        gckOS_DumpBuffer(os, delta->command, delta->commandBytes, gcvDUMP_BUFFER_USER, gcvTRUE);
         gcmkPRINT("@[kernel.execute]");
 
         last = _Next(last);

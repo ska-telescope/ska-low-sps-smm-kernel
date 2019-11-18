@@ -34,7 +34,7 @@
 
 static __u8 c67x00_hub_des[] = {
 	0x09,			/*  __u8  bLength; */
-	0x29,			/*  __u8  bDescriptorType; Hub-descriptor */
+	USB_DT_HUB,		/*  __u8  bDescriptorType; Hub-descriptor */
 	0x02,			/*  __u8  bNbrPorts; */
 	0x00,			/* __u16  wHubCharacteristics; */
 	0x00,			/*   (per-port OC, no power switching) */
@@ -305,7 +305,7 @@ static int c67x00_hcd_get_frame(struct usb_hcd *hcd)
 	return temp_val ? (temp_val - 1) : HOST_FRAME_MASK;
 }
 
-static struct hc_driver c67x00_hc_driver = {
+static const struct hc_driver c67x00_hc_driver = {
 	.description	= "c67x00-hcd",
 	.product_desc	= "Cypress C67X00 Host Controller",
 	.hcd_priv_size	= sizeof(struct c67x00_hcd),

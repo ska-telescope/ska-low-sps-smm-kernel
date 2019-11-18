@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2010-2015 Freescale Semiconductor, Inc.
+ * Copyright (C) 2010-2016 Freescale Semiconductor, Inc.
+ * Copyright 2017 NXP
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +22,6 @@
  * Copyright 2008-2009 Embedded Alley Solutions, Inc All Rights Reserved.
  */
 
-#include <linux/busfreq-imx6.h>
 #include <linux/clk.h>
 #include <linux/dma-mapping.h>
 #include <linux/dmaengine.h>
@@ -215,27 +215,29 @@ static void dump_pxp_reg(struct pxps *pxp)
 
 static bool is_yuv(u32 pix_fmt)
 {
-	if ((pix_fmt == PXP_PIX_FMT_YUYV) |
-	    (pix_fmt == PXP_PIX_FMT_UYVY) |
-	    (pix_fmt == PXP_PIX_FMT_YVYU) |
-	    (pix_fmt == PXP_PIX_FMT_VYUY) |
-	    (pix_fmt == PXP_PIX_FMT_Y41P) |
-	    (pix_fmt == PXP_PIX_FMT_VUY444) |
-	    (pix_fmt == PXP_PIX_FMT_NV12) |
-	    (pix_fmt == PXP_PIX_FMT_NV16) |
-	    (pix_fmt == PXP_PIX_FMT_NV61) |
-	    (pix_fmt == PXP_PIX_FMT_GREY) |
-	    (pix_fmt == PXP_PIX_FMT_GY04) |
-	    (pix_fmt == PXP_PIX_FMT_YVU410P) |
-	    (pix_fmt == PXP_PIX_FMT_YUV410P) |
-	    (pix_fmt == PXP_PIX_FMT_YVU420P) |
-	    (pix_fmt == PXP_PIX_FMT_YUV420P) |
-	    (pix_fmt == PXP_PIX_FMT_YUV420P2) |
-	    (pix_fmt == PXP_PIX_FMT_YVU422P) |
-	    (pix_fmt == PXP_PIX_FMT_YUV422P)) {
-		return true;
-	} else {
-		return false;
+	switch (pix_fmt) {
+		case PXP_PIX_FMT_YUYV:
+		case PXP_PIX_FMT_UYVY:
+		case PXP_PIX_FMT_YVYU:
+		case PXP_PIX_FMT_VYUY:
+		case PXP_PIX_FMT_Y41P:
+		case PXP_PIX_FMT_VUY444:
+		case PXP_PIX_FMT_NV12:
+		case PXP_PIX_FMT_NV21:
+		case PXP_PIX_FMT_NV16:
+		case PXP_PIX_FMT_NV61:
+		case PXP_PIX_FMT_GREY:
+		case PXP_PIX_FMT_GY04:
+		case PXP_PIX_FMT_YVU410P:
+		case PXP_PIX_FMT_YUV410P:
+		case PXP_PIX_FMT_YVU420P:
+		case PXP_PIX_FMT_YUV420P:
+		case PXP_PIX_FMT_YUV420P2:
+		case PXP_PIX_FMT_YVU422P:
+		case PXP_PIX_FMT_YUV422P:
+			return true;
+		default:
+			return false;
 	}
 }
 
@@ -262,7 +264,7 @@ static void pxp_set_ctrl(struct pxps *pxp)
 
 	/* Configure S0 input format */
 	switch (pxp_conf->s0_param.pixel_fmt) {
-	case PXP_PIX_FMT_RGB32:
+	case PXP_PIX_FMT_XRGB32:
 		fmt_ctrl = BV_PXP_PS_CTRL_FORMAT__RGB888;
 		break;
 	case PXP_PIX_FMT_RGB565:
@@ -324,7 +326,7 @@ static void pxp_set_ctrl(struct pxps *pxp)
 
 	/* Configure output format based on out_channel format */
 	switch (pxp_conf->out_param.pixel_fmt) {
-	case PXP_PIX_FMT_RGB32:
+	case PXP_PIX_FMT_XRGB32:
 		fmt_ctrl = BV_PXP_OUT_CTRL_FORMAT__RGB888;
 		break;
 	case PXP_PIX_FMT_BGRA32:
@@ -406,6 +408,18 @@ static void pxp_set_outbuf(struct pxps *pxp)
 
 	__raw_writel(out_params->paddr, pxp->base + HW_PXP_OUT_BUF);
 
+	if ((out_params->pixel_fmt == PXP_PIX_FMT_NV12) ||
+		(out_params->pixel_fmt == PXP_PIX_FMT_NV21) ||
+		(out_params->pixel_fmt == PXP_PIX_FMT_NV16) ||
+		(out_params->pixel_fmt == PXP_PIX_FMT_NV61)) {
+		dma_addr_t Y, U;
+
+		Y = out_params->paddr;
+		U = Y + (out_params->width * out_params->height);
+
+		__raw_writel(U, pxp->base + HW_PXP_OUT_BUF2);
+	}
+
 	if (proc_data->rotate == 90 || proc_data->rotate == 270)
 		__raw_writel(BF_PXP_OUT_LRC_X(out_params->height - 1) |
 				BF_PXP_OUT_LRC_Y(out_params->width - 1),
@@ -419,10 +433,11 @@ static void pxp_set_outbuf(struct pxps *pxp)
 		__raw_writel(out_params->stride * 3,
 				pxp->base + HW_PXP_OUT_PITCH);
 	} else if (out_params->pixel_fmt == PXP_PIX_FMT_BGRA32 ||
-		out_params->pixel_fmt == PXP_PIX_FMT_RGB32) {
+		out_params->pixel_fmt == PXP_PIX_FMT_XRGB32) {
 		__raw_writel(out_params->stride << 2,
 				pxp->base + HW_PXP_OUT_PITCH);
-	} else if (out_params->pixel_fmt == PXP_PIX_FMT_RGB565) {
+	} else if ((out_params->pixel_fmt == PXP_PIX_FMT_RGB565) ||
+		   (out_params->pixel_fmt == PXP_PIX_FMT_RGB555)) {
 		__raw_writel(out_params->stride << 1,
 				pxp->base + HW_PXP_OUT_PITCH);
 	} else if (out_params->pixel_fmt == PXP_PIX_FMT_UYVY ||
@@ -509,11 +524,12 @@ static void pxp_set_oln(int layer_no, struct pxps *pxp)
 				pxp->base + HW_PXP_OUT_AS_LRC);
 	}
 
-	if ((olparams_data->pixel_fmt == PXP_PIX_FMT_BGRA32) |
-		 (olparams_data->pixel_fmt == PXP_PIX_FMT_RGB32)) {
+	if ((olparams_data->pixel_fmt == PXP_PIX_FMT_BGRA32) ||
+		 (olparams_data->pixel_fmt == PXP_PIX_FMT_XRGB32)) {
 		__raw_writel(pitch << 2,
 				pxp->base + HW_PXP_AS_PITCH);
-	} else if (olparams_data->pixel_fmt == PXP_PIX_FMT_RGB565) {
+	} else if ((olparams_data->pixel_fmt == PXP_PIX_FMT_RGB565) ||
+		   (olparams_data->pixel_fmt == PXP_PIX_FMT_RGB555)) {
 		__raw_writel(pitch << 1,
 				pxp->base + HW_PXP_AS_PITCH);
 	} else {
@@ -528,7 +544,7 @@ static void pxp_set_olparam(int layer_no, struct pxps *pxp)
 	u32 olparam;
 
 	olparam = BF_PXP_AS_CTRL_ALPHA(olparams_data->global_alpha);
-	if (olparams_data->pixel_fmt == PXP_PIX_FMT_RGB32) {
+	if (olparams_data->pixel_fmt == PXP_PIX_FMT_XRGB32) {
 		olparam |=
 		    BF_PXP_AS_CTRL_FORMAT(BV_PXP_AS_CTRL_FORMAT__RGB888);
 	} else if (olparams_data->pixel_fmt == PXP_PIX_FMT_BGRA32) {
@@ -543,7 +559,11 @@ static void pxp_set_olparam(int layer_no, struct pxps *pxp)
 	} else if (olparams_data->pixel_fmt == PXP_PIX_FMT_RGB565) {
 		olparam |=
 		    BF_PXP_AS_CTRL_FORMAT(BV_PXP_AS_CTRL_FORMAT__RGB565);
+	} else if (olparams_data->pixel_fmt == PXP_PIX_FMT_RGB555) {
+		olparam |=
+		    BF_PXP_AS_CTRL_FORMAT(BV_PXP_AS_CTRL_FORMAT__RGB555);
 	}
+
 	if (olparams_data->global_alpha_enable) {
 		if (olparams_data->global_override) {
 			olparam |=
@@ -638,8 +658,15 @@ static int pxp_set_scaling(struct pxps *pxp)
 	struct pxp_proc_data *proc_data = &pxp->pxp_conf_state.proc_data;
 	struct pxp_config_data *pxp_conf = &pxp->pxp_conf_state;
 	struct pxp_layer_param *s0_params = &pxp_conf->s0_param;
+	struct pxp_layer_param *out_params = &pxp_conf->out_param;
 
 	proc_data->scaling = 1;
+
+	if (!proc_data->drect.width || !proc_data->drect.height) {
+		pr_err("Invalid drect width and height passed in\n");
+		return -EINVAL;
+	}
+
 	decx = proc_data->srect.width / proc_data->drect.width;
 	decy = proc_data->srect.height / proc_data->drect.height;
 	if (decx > 1) {
@@ -657,6 +684,8 @@ static int pxp_set_scaling(struct pxps *pxp)
 			 (proc_data->drect.width * decx);
 	} else {
 		if (!is_yuv(s0_params->pixel_fmt) ||
+		    (is_yuv(s0_params->pixel_fmt) ==
+		     is_yuv(out_params->pixel_fmt)) ||
 		    (s0_params->pixel_fmt == PXP_PIX_FMT_GREY) ||
 		    (s0_params->pixel_fmt == PXP_PIX_FMT_GY04) ||
 		    (s0_params->pixel_fmt == PXP_PIX_FMT_VUY444)) {
@@ -949,9 +978,10 @@ static void pxp_set_s0buf(struct pxps *pxp)
 
 	Y = s0_params->paddr;
 
-	if (s0_params->pixel_fmt == PXP_PIX_FMT_RGB565)
+	if ((s0_params->pixel_fmt == PXP_PIX_FMT_RGB565) ||
+		(s0_params->pixel_fmt == PXP_PIX_FMT_RGB555))
 		bpp = 2;
-	else if (s0_params->pixel_fmt == PXP_PIX_FMT_RGB32)
+	else if (s0_params->pixel_fmt == PXP_PIX_FMT_XRGB32)
 		bpp = 4;
 	offset = (proc_data->srect.top * s0_params->width +
 		 proc_data->srect.left) * bpp;
@@ -1011,7 +1041,7 @@ static void pxp_set_s0buf(struct pxps *pxp)
 	else if (s0_params->pixel_fmt == PXP_PIX_FMT_GY04)
 		__raw_writel(pitch >> 1,
 				pxp->base + HW_PXP_PS_PITCH);
-	else if (s0_params->pixel_fmt == PXP_PIX_FMT_RGB32 ||
+	else if (s0_params->pixel_fmt == PXP_PIX_FMT_XRGB32 ||
 			 s0_params->pixel_fmt == PXP_PIX_FMT_VUY444)
 		__raw_writel(pitch << 2,
 				pxp->base + HW_PXP_PS_PITCH);
@@ -1021,7 +1051,8 @@ static void pxp_set_s0buf(struct pxps *pxp)
 		 s0_params->pixel_fmt == PXP_PIX_FMT_YVYU)
 		__raw_writel(pitch << 1,
 				pxp->base + HW_PXP_PS_PITCH);
-	else if (s0_params->pixel_fmt == PXP_PIX_FMT_RGB565)
+	else if ((s0_params->pixel_fmt == PXP_PIX_FMT_RGB565) ||
+		 (s0_params->pixel_fmt == PXP_PIX_FMT_RGB555))
 		__raw_writel(pitch << 1,
 				pxp->base + HW_PXP_PS_PITCH);
 	else
@@ -1036,25 +1067,17 @@ static void pxp_set_s0buf(struct pxps *pxp)
  */
 static int pxp_config(struct pxps *pxp, struct pxp_channel *pxp_chan)
 {
-	struct pxp_config_data *pxp_conf_data = &pxp->pxp_conf_state;
-	int ol_nr;
-	int i;
-
 	/* Configure PxP regs */
 	pxp_set_ctrl(pxp);
 	pxp_set_s0param(pxp);
 	pxp_set_s0crop(pxp);
 	pxp_set_scaling(pxp);
-	ol_nr = pxp_conf_data->layer_nr - 2;
-	while (ol_nr > 0) {
-		i = pxp_conf_data->layer_nr - 2 - ol_nr;
-		pxp_set_oln(i, pxp);
-		pxp_set_olparam(i, pxp);
-		/* only the color key in higher overlay will take effect. */
-		pxp_set_olcolorkey(i, pxp);
-		ol_nr--;
-	}
 	pxp_set_s0colorkey(pxp);
+
+	pxp_set_oln(0, pxp);
+	pxp_set_olparam(0, pxp);
+	pxp_set_olcolorkey(0, pxp);
+
 	pxp_set_csc(pxp);
 	pxp_set_bg(pxp);
 	pxp_set_lut(pxp);
@@ -1073,8 +1096,6 @@ static void pxp_clk_enable(struct pxps *pxp)
 		mutex_unlock(&pxp->clk_mutex);
 		return;
 	}
-
-	request_bus_freq(BUS_FREQ_HIGH);
 
 	pm_runtime_get_sync(pxp->dev);
 
@@ -1104,14 +1125,11 @@ static void pxp_clk_disable(struct pxps *pxp)
 		if (pxp->clk_disp_axi)
 			clk_disable_unprepare(pxp->clk_disp_axi);
 		pxp->clk_stat = CLK_STAT_OFF;
+		pm_runtime_put_sync_suspend(pxp->dev);
 	} else
 		spin_unlock_irqrestore(&pxp->lock, flags);
 
-	pm_runtime_put_sync_suspend(pxp->dev);
-
 	mutex_unlock(&pxp->clk_mutex);
-
-	release_bus_freq(BUS_FREQ_HIGH);
 }
 
 static inline void clkoff_callback(struct work_struct *w)
@@ -1365,6 +1383,7 @@ static struct dma_async_tx_descriptor *pxp_prep_slave_sg(struct dma_chan *chan,
 	struct pxp_channel *pxp_chan = to_pxp_channel(chan);
 	struct pxp_dma *pxp_dma = to_pxp_dma(chan->device);
 	struct pxps *pxp = to_pxp(pxp_dma);
+	struct pxp_tx_desc *pos = NULL, *next = NULL;
 	struct pxp_tx_desc *desc = NULL;
 	struct pxp_tx_desc *first = NULL, *prev = NULL;
 	struct scatterlist *sg;
@@ -1384,6 +1403,16 @@ static struct dma_async_tx_descriptor *pxp_prep_slave_sg(struct dma_chan *chan,
 		desc = pxpdma_desc_alloc(pxp_chan);
 		if (!desc) {
 			dev_err(chan->device->dev, "no enough memory to allocate tx descriptor\n");
+
+			if (first) {
+				list_for_each_entry_safe(pos, next, &first->tx_list, list) {
+					list_del_init(&pos->list);
+					kmem_cache_free(tx_desc_cache, (void*)pos);
+				}
+				list_del_init(&first->list);
+				kmem_cache_free(tx_desc_cache, (void*)first);
+			}
+
 			return NULL;
 		}
 
@@ -1445,14 +1474,9 @@ static void __pxp_terminate_all(struct dma_chan *chan)
 	pxp_chan->status = PXP_CHANNEL_INITIALIZED;
 }
 
-static int pxp_control(struct dma_chan *chan, enum dma_ctrl_cmd cmd,
-			unsigned long arg)
+static int pxp_device_terminate_all(struct dma_chan *chan)
 {
 	struct pxp_channel *pxp_chan = to_pxp_channel(chan);
-
-	/* Only supports DMA_TERMINATE_ALL */
-	if (cmd != DMA_TERMINATE_ALL)
-		return -ENXIO;
 
 	spin_lock(&pxp_chan->lock);
 	__pxp_terminate_all(chan);
@@ -1538,7 +1562,7 @@ static int pxp_dma_init(struct pxps *pxp)
 
 	/* Compulsory for DMA_SLAVE fields */
 	dma->device_prep_slave_sg = pxp_prep_slave_sg;
-	dma->device_control = pxp_control;
+	dma->device_terminate_all = pxp_device_terminate_all;
 
 	/* Initialize PxP Channels */
 	INIT_LIST_HEAD(&dma->channels);
@@ -1685,13 +1709,10 @@ static int pxp_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, pxp);
 	pxp->irq = irq;
 
-	pxp->pxp_ongoing = 0;
-	pxp->lut_state = 0;
-
 	spin_lock_init(&pxp->lock);
 	mutex_init(&pxp->clk_mutex);
 
-	pxp->base = devm_request_and_ioremap(&pdev->dev, res);
+	pxp->base = devm_ioremap_resource(&pdev->dev, res);
 	if (pxp->base == NULL) {
 		dev_err(&pdev->dev, "Couldn't ioremap regs\n");
 		err = -ENODEV;
@@ -1804,7 +1825,7 @@ static int pxp_resume(struct device *dev)
 #define	pxp_resume	NULL
 #endif
 
-#ifdef CONFIG_PM_RUNTIME
+#ifdef CONFIG_PM
 static int pxp_runtime_suspend(struct device *dev)
 {
 	dev_dbg(dev, "pxp busfreq high release.\n");

@@ -32,8 +32,6 @@
 #include <linux/fsl_devices.h>
 #include <linux/slab.h>
 #include <linux/of.h>
-#include <linux/workqueue.h>
-
 
 #include <linux/mipi_csi2.h>
 
@@ -152,8 +150,6 @@ unsigned int mipi_csi2_set_lanes(struct mipi_csi2_info *info)
 	lanes = mipi_csi2_read(info, MIPI_CSI2_N_LANES);
 	_mipi_csi2_unlock(info);
 
-	printk(KERN_INFO "MIPI lanes: %d\n", lanes + 1);
-
 	return lanes;
 }
 EXPORT_SYMBOL(mipi_csi2_set_lanes);
@@ -258,7 +254,6 @@ EXPORT_SYMBOL(mipi_csi2_get_error2);
  */
 int mipi_csi2_pixelclk_enable(struct mipi_csi2_info *info)
 {
-	printk(KERN_DEBUG "MIPI mipi_csi2_pixelclk_enable");
 	return clk_prepare_enable(info->pixel_clk);
 }
 EXPORT_SYMBOL(mipi_csi2_pixelclk_enable);
@@ -271,7 +266,6 @@ EXPORT_SYMBOL(mipi_csi2_pixelclk_enable);
  */
 void mipi_csi2_pixelclk_disable(struct mipi_csi2_info *info)
 {
-	printk(KERN_DEBUG "MIPI mipi_csi2_pixelclk_disable");
 	clk_disable_unprepare(info->pixel_clk);
 }
 EXPORT_SYMBOL(mipi_csi2_pixelclk_disable);
@@ -296,8 +290,7 @@ int mipi_csi2_reset(struct mipi_csi2_info *info)
 	mipi_csi2_write(info, 0x00000002, MIPI_CSI2_PHY_TST_CTRL0);
 	mipi_csi2_write(info, 0x00010044, MIPI_CSI2_PHY_TST_CTRL1);
 	mipi_csi2_write(info, 0x00000000, MIPI_CSI2_PHY_TST_CTRL0);
-	//mipi_csi2_write(info, 0x00000014, MIPI_CSI2_PHY_TST_CTRL1);
-	mipi_csi2_write(info, info->pll, MIPI_CSI2_PHY_TST_CTRL1);
+	mipi_csi2_write(info, 0x00000014, MIPI_CSI2_PHY_TST_CTRL1);
 	mipi_csi2_write(info, 0x00000002, MIPI_CSI2_PHY_TST_CTRL0);
 	mipi_csi2_write(info, 0x00000000, MIPI_CSI2_PHY_TST_CTRL0);
 
@@ -306,11 +299,6 @@ int mipi_csi2_reset(struct mipi_csi2_info *info)
 	mipi_csi2_write(info, 0xffffffff, MIPI_CSI2_CSI2_RESETN);
 
 	_mipi_csi2_unlock(info);
-
-	printk(KERN_DEBUG "MIPI pll: %02X\n", info->pll);
-	printk(KERN_DEBUG "MIPI cfg_clk: %lu\n", clk_get_rate(info->cfg_clk));
-	printk(KERN_DEBUG "MIPI dphy_clk: %lu\n", clk_get_rate(info->dphy_clk));
-	printk(KERN_DEBUG "MIPI pixel_clk: %lu\n", clk_get_rate(info->pixel_clk));
 
 	return 0;
 }
@@ -378,200 +366,6 @@ unsigned int mipi_csi2_get_virtual_channel(struct mipi_csi2_info *info)
 }
 EXPORT_SYMBOL(mipi_csi2_get_virtual_channel);
 
-
-#define UPDATE_ERROR_COUNTERS(__value__, __name__) if(__value__ & (MIPI_CSI2_ERR1__##__name__)) info->errors.__name__++
-
-static irqreturn_t mipi_csi2_isr0(int irq, void *data)
-{
-	struct mipi_csi2_info *info = data;
-	unsigned long flags;
-	u32 err;
-
-	spin_lock_irqsave(&info->irq_lock, flags);
-
-	err = mipi_csi2_read(info, MIPI_CSI2_ERR1);
-
-	info->errors.ERROR1_COUNT++;
-	UPDATE_ERROR_COUNTERS(err, ERR_ECC_DOUBLE);
-	UPDATE_ERROR_COUNTERS(err, VC3_ERR_CRC);
-	UPDATE_ERROR_COUNTERS(err, VC2_ERR_CRC);
-	UPDATE_ERROR_COUNTERS(err, VC1_ERR_CRC);
-	UPDATE_ERROR_COUNTERS(err, VC0_ERR_CRC);
-	UPDATE_ERROR_COUNTERS(err, ERR_I_SEQ_DI3);
-	UPDATE_ERROR_COUNTERS(err, ERR_I_SEQ_DI2);
-	UPDATE_ERROR_COUNTERS(err, ERR_I_SEQ_DI1);
-	UPDATE_ERROR_COUNTERS(err, ERR_I_SEQ_DI0);
-	UPDATE_ERROR_COUNTERS(err, ERR_I_BNDRY_MATCH_DI3);
-	UPDATE_ERROR_COUNTERS(err, ERR_I_BNDRY_MATCH_DI2);
-	UPDATE_ERROR_COUNTERS(err, ERR_I_BNDRY_MATCH_DI1);
-	UPDATE_ERROR_COUNTERS(err, ERR_I_BNDRY_MATCH_DI0);
-	UPDATE_ERROR_COUNTERS(err, ERR_FRAME_DATA_VC3);
-	UPDATE_ERROR_COUNTERS(err, ERR_FRAME_DATA_VC2);
-	UPDATE_ERROR_COUNTERS(err, ERR_FRAME_DATA_VC1);
-	UPDATE_ERROR_COUNTERS(err, ERR_FRAME_DATA_VC0);
-	UPDATE_ERROR_COUNTERS(err, ERR_F_SEQ_VC3);
-	UPDATE_ERROR_COUNTERS(err, ERR_F_SEQ_VC2);
-	UPDATE_ERROR_COUNTERS(err, ERR_F_SEQ_VC1);
-	UPDATE_ERROR_COUNTERS(err, ERR_F_SEQ_VC0);
-	UPDATE_ERROR_COUNTERS(err, ERR_F_BNDRY_MATCH_VC3);
-	UPDATE_ERROR_COUNTERS(err, ERR_F_BNDRY_MATCH_VC2);
-	UPDATE_ERROR_COUNTERS(err, ERR_F_BNDRY_MATCH_VC1);
-	UPDATE_ERROR_COUNTERS(err, ERR_F_BNDRY_MATCH_VC0);
-	UPDATE_ERROR_COUNTERS(err, PHY_ERRSOTSYNCHS_3);
-	UPDATE_ERROR_COUNTERS(err, PHY_ERRSOTSYNCHS_2);
-	UPDATE_ERROR_COUNTERS(err, PHY_ERRSOTSYNCHS_1);
-	UPDATE_ERROR_COUNTERS(err, PHY_ERRSOTSYNCHS_0);
-	//pr_debug("MIPI CSI interrupt received\n");
-	//pr_debug("MIPI CSI interrupt received\n");
-	//dev_info(&(info->pdev->dev), "MIPI CSI ERROR 1 STATUS %08X\n", err);
-
-	info->last_err1 = err;
-
-	spin_unlock_irqrestore(&info->irq_lock, flags);
-
-	return IRQ_HANDLED;
-}
-
-#undef UPDATE_ERROR_COUNTERS
-#define UPDATE_ERROR_COUNTERS(__value__, __name__) if(__value__ & (MIPI_CSI2_ERR2__##__name__)) info->errors.__name__++
-static irqreturn_t mipi_csi2_isr1(int irq, void *data)
-{
-	struct mipi_csi2_info *info = data;
-	unsigned long flags;
-	u32 err;
-
-	spin_lock_irqsave(&info->irq_lock, flags);
-
-	err = mipi_csi2_read(info, MIPI_CSI2_ERR2);
-
-	info->errors.ERROR2_COUNT++;
-	UPDATE_ERROR_COUNTERS(err, ERR_I_SEQ_DI7);
-	UPDATE_ERROR_COUNTERS(err, ERR_I_SEQ_DI6);
-	UPDATE_ERROR_COUNTERS(err, ERR_I_SEQ_DI5);
-	UPDATE_ERROR_COUNTERS(err, ERR_I_SEQ_DI4);
-	UPDATE_ERROR_COUNTERS(err, ERR_I_BNDRY_MATCH_DI7);
-	UPDATE_ERROR_COUNTERS(err, ERR_I_BNDRY_MATCH_DI6);
-	UPDATE_ERROR_COUNTERS(err, ERR_I_BNDRY_MATCH_DI5);
-	UPDATE_ERROR_COUNTERS(err, ERR_I_BNDRY_MATCH_DI4);
-	UPDATE_ERROR_COUNTERS(err, ERR_ID_VC3);
-	UPDATE_ERROR_COUNTERS(err, ERR_ID_VC2);
-	UPDATE_ERROR_COUNTERS(err, ERR_ID_VC1);
-	UPDATE_ERROR_COUNTERS(err, ERR_ID_VC0);
-	UPDATE_ERROR_COUNTERS(err, VC3_ERR_ECC_CORRECTED);
-	UPDATE_ERROR_COUNTERS(err, VC2_ERR_ECC_CORRECTED);
-	UPDATE_ERROR_COUNTERS(err, VC1_ERR_ECC_CORRECTED);
-	UPDATE_ERROR_COUNTERS(err, VC0_ERR_ECC_CORRECTED);
-	UPDATE_ERROR_COUNTERS(err, PHY_ERRSOTHS_3);
-	UPDATE_ERROR_COUNTERS(err, PHY_ERRSOTHS_2);
-	UPDATE_ERROR_COUNTERS(err, PHY_ERRSOTHS_1);
-	UPDATE_ERROR_COUNTERS(err, PHY_ERRSOTHS_0);
-	UPDATE_ERROR_COUNTERS(err, PHY_ERRESC_3);
-	UPDATE_ERROR_COUNTERS(err, PHY_ERRESC_2);
-	UPDATE_ERROR_COUNTERS(err, PHY_ERRESC_1);
-	UPDATE_ERROR_COUNTERS(err, PHY_ERRESC_0);
- 
-	//pr_debug("MIPI CSI interrupt received\n");
-	//dev_info(&(info->pdev->dev), "MIPI CSI ERROR 2 STATUS %08X\n", err);
-
-	info->last_err2 = err;
-
-	spin_unlock_irqrestore(&info->irq_lock, flags);
-
-	return IRQ_HANDLED;
-}
-
-#define APPEND_ERROR_COUNTER(__name__) len += snprintf(buf + len, PAGE_SIZE - len, "%s: %u\n", #__name__, errors.__name__)
-
-static ssize_t dumpErrorCounters(
-		struct device *dev,
-		struct device_attribute *attr,
-		char *buf)
-{
-	struct platform_device *pdev = dev_get_platdata(dev);
-	struct mipi_csi2_info *info  = dev_get_drvdata(dev);
-	unsigned long flags;
-	struct mipi_csi2_error errors;
-	u32 err;
-	size_t len;
-
-	spin_lock_irqsave(&info->irq_lock, flags);
-
-	errors = info->errors;
-	memset(&info->errors, 0, sizeof(struct mipi_csi2_error));
-
-	spin_unlock_irqrestore(&info->irq_lock, flags);
-
-	len = 0;
-
-	APPEND_ERROR_COUNTER(ERR_ECC_DOUBLE);
-	APPEND_ERROR_COUNTER(VC3_ERR_CRC);
-	APPEND_ERROR_COUNTER(VC2_ERR_CRC);
-	APPEND_ERROR_COUNTER(VC1_ERR_CRC);
-	APPEND_ERROR_COUNTER(VC0_ERR_CRC);
-	APPEND_ERROR_COUNTER(ERR_I_SEQ_DI3);
-	APPEND_ERROR_COUNTER(ERR_I_SEQ_DI2);
-	APPEND_ERROR_COUNTER(ERR_I_SEQ_DI1);
-	APPEND_ERROR_COUNTER(ERR_I_SEQ_DI0);
-	APPEND_ERROR_COUNTER(ERR_I_BNDRY_MATCH_DI3);
-	APPEND_ERROR_COUNTER(ERR_I_BNDRY_MATCH_DI2);
-	APPEND_ERROR_COUNTER(ERR_I_BNDRY_MATCH_DI1);
-	APPEND_ERROR_COUNTER(ERR_I_BNDRY_MATCH_DI0);
-	APPEND_ERROR_COUNTER(ERR_FRAME_DATA_VC3);
-	APPEND_ERROR_COUNTER(ERR_FRAME_DATA_VC2);
-	APPEND_ERROR_COUNTER(ERR_FRAME_DATA_VC1);
-	APPEND_ERROR_COUNTER(ERR_FRAME_DATA_VC0);
-	APPEND_ERROR_COUNTER(ERR_F_SEQ_VC3);
-	APPEND_ERROR_COUNTER(ERR_F_SEQ_VC2);
-	APPEND_ERROR_COUNTER(ERR_F_SEQ_VC1);
-	APPEND_ERROR_COUNTER(ERR_F_SEQ_VC0);
-	APPEND_ERROR_COUNTER(ERR_F_BNDRY_MATCH_VC3);
-	APPEND_ERROR_COUNTER(ERR_F_BNDRY_MATCH_VC2);
-	APPEND_ERROR_COUNTER(ERR_F_BNDRY_MATCH_VC1);
-	APPEND_ERROR_COUNTER(ERR_F_BNDRY_MATCH_VC0);
-	APPEND_ERROR_COUNTER(PHY_ERRSOTSYNCHS_3);
-	APPEND_ERROR_COUNTER(PHY_ERRSOTSYNCHS_2);
-	APPEND_ERROR_COUNTER(PHY_ERRSOTSYNCHS_1);
-	APPEND_ERROR_COUNTER(PHY_ERRSOTSYNCHS_0);
-	APPEND_ERROR_COUNTER(ERR_I_SEQ_DI7);
-	APPEND_ERROR_COUNTER(ERR_I_SEQ_DI6);
-	APPEND_ERROR_COUNTER(ERR_I_SEQ_DI5);
-	APPEND_ERROR_COUNTER(ERR_I_SEQ_DI4);
-	APPEND_ERROR_COUNTER(ERR_I_BNDRY_MATCH_DI7);
-	APPEND_ERROR_COUNTER(ERR_I_BNDRY_MATCH_DI6);
-	APPEND_ERROR_COUNTER(ERR_I_BNDRY_MATCH_DI5);
-	APPEND_ERROR_COUNTER(ERR_I_BNDRY_MATCH_DI4);
-	APPEND_ERROR_COUNTER(ERR_ID_VC3);
-	APPEND_ERROR_COUNTER(ERR_ID_VC2);
-	APPEND_ERROR_COUNTER(ERR_ID_VC1);
-	APPEND_ERROR_COUNTER(ERR_ID_VC0);
-	APPEND_ERROR_COUNTER(VC3_ERR_ECC_CORRECTED);
-	APPEND_ERROR_COUNTER(VC2_ERR_ECC_CORRECTED);
-	APPEND_ERROR_COUNTER(VC1_ERR_ECC_CORRECTED);
-	APPEND_ERROR_COUNTER(VC0_ERR_ECC_CORRECTED);
-	APPEND_ERROR_COUNTER(PHY_ERRSOTHS_3);
-	APPEND_ERROR_COUNTER(PHY_ERRSOTHS_2);
-	APPEND_ERROR_COUNTER(PHY_ERRSOTHS_1);
-	APPEND_ERROR_COUNTER(PHY_ERRSOTHS_0);
-	APPEND_ERROR_COUNTER(PHY_ERRESC_3);
-	APPEND_ERROR_COUNTER(PHY_ERRESC_2);
-	APPEND_ERROR_COUNTER(PHY_ERRESC_1);
-	APPEND_ERROR_COUNTER(PHY_ERRESC_0);
-
-	return len;
-}
-static DEVICE_ATTR(ErrorCounters, S_IRUGO, dumpErrorCounters, 0);
-
-static struct attribute* mipi_csi2_sysfsStatus_attributes[] = {
-		&dev_attr_ErrorCounters,
-		NULL
-};
-
-static const struct attribute_group mipi_csi2_sysfsStatus_group = {
-		.name = "status",
-		.attrs = mipi_csi2_sysfsStatus_attributes,
-};
-
-
 /**
  * This function is called by the driver framework to initialize the MIPI CSI2
  * device.
@@ -588,16 +382,12 @@ static int mipi_csi2_probe(struct platform_device *pdev)
 	struct resource *res;
 	u32 mipi_csi2_dphy_ver;
 	int ret;
-	int irq0;
-	int irq1;
 
 	gmipi_csi2 = kmalloc(sizeof(struct mipi_csi2_info), GFP_KERNEL);
 	if (!gmipi_csi2) {
 		ret = -ENOMEM;
 		goto alloc_failed;
 	}
-
-	memset(gmipi_csi2, 0, sizeof(struct mipi_csi2_info));
 
 	ret = of_property_read_u32(np, "ipu_id", &(gmipi_csi2->ipu_id));
 	if (ret) {
@@ -621,58 +411,6 @@ static int mipi_csi2_probe(struct platform_device *pdev)
 	if (ret) {
 		dev_err(&pdev->dev, "lanes missing or invalid\n");
 		goto err;
-	}
-
-	ret = of_property_read_u32(np, "gated", &(gmipi_csi2->gated));
-	if (ret) {
-		dev_err(&pdev->dev, "gated missing or invalid. Ignoring!\n");
-		gmipi_csi2->gated = 1;
-		//goto err;
-	}
-
-	ret = of_property_read_u32(np, "pll", &(gmipi_csi2->pll));
-	if (ret) {
-		dev_err(&pdev->dev, "pll missing or invalid. Defaulting to 0x00000014!\n");
-		gmipi_csi2->pll = 0x00000014;
-		//goto err;
-	}
-
-	ret = of_property_read_u32(np, "isr", &(gmipi_csi2->isr_enable));
-	if (ret) {
-		dev_err(&pdev->dev, "isr missing or invalid. Defaulting to 0x00000000!\n");
-		gmipi_csi2->isr_enable = 0x00000014;
-		//goto err;
-	}
-
-	if(gmipi_csi2->isr_enable != 0x00000000) {
-		irq0 = platform_get_irq(pdev, 0);
-		ret = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
-		if (unlikely(ret == NULL)) {
-			dev_err(&pdev->dev, "mipi_csi2: No irq0 line provided\n");
-			goto err;
-		}
-
-		irq1 = platform_get_irq(pdev, 1);
-		ret = platform_get_resource(pdev, IORESOURCE_IRQ, 1);
-		if (unlikely(ret == NULL)) {
-			dev_err(&pdev->dev, "mipi_csi2: No irq1 line provided\n");
-			goto err;
-		}
-
-		spin_lock_init(&gmipi_csi2->irq_lock);
-
-
-		ret = devm_request_irq(&pdev->dev, irq0, mipi_csi2_isr0, IRQF_SHARED, dev_name(&pdev->dev), gmipi_csi2);
-		if (ret < 0) {
-			dev_err(&pdev->dev, "mipi_csi2: Unable to request irq 0: %d\n", ret);
-			goto err;
-		}
-
-		ret = devm_request_irq(&pdev->dev, irq1, mipi_csi2_isr1, IRQF_SHARED, dev_name(&pdev->dev), gmipi_csi2);
-		if (ret < 0) {
-			dev_err(&pdev->dev, "mipi_csi2: Unable to request irq 1: %d\n", ret);
-			goto err;
-		}
 	}
 
 	if ((gmipi_csi2->ipu_id < 0) || (gmipi_csi2->ipu_id > 1) ||
@@ -735,12 +473,6 @@ static int mipi_csi2_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, gmipi_csi2);
 
-	ret = sysfs_create_group(&pdev->dev.kobj, &mipi_csi2_sysfsStatus_group);
-	if (ret < 0) {
-		dev_err(&pdev->dev, "unable to create %s sysfs group\n", mipi_csi2_sysfsStatus_group.name);
-		goto err;
-	}
-
 	dev_info(&pdev->dev, "i.MX MIPI CSI2 driver probed\n");
 	dev_info(&pdev->dev, "i.MX MIPI CSI2 dphy version is 0x%x\n",
 						mipi_csi2_dphy_ver);
@@ -759,7 +491,6 @@ static int mipi_csi2_remove(struct platform_device *pdev)
 	/* unmapping mipi register */
 	iounmap(gmipi_csi2->mipi_csi2_base);
 
-	sysfs_remove_group(&pdev->dev.kobj, &mipi_csi2_sysfsStatus_group);
 	kfree(gmipi_csi2);
 
 	dev_set_drvdata(&pdev->dev, NULL);

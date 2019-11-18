@@ -1,20 +1,54 @@
 /****************************************************************************
 *
-*    Copyright (C) 2005 - 2014 by Vivante Corp.
+*    The MIT License (MIT)
 *
-*    This program is free software; you can redistribute it and/or modify
-*    it under the terms of the GNU General Public License as published by
-*    the Free Software Foundation; either version 2 of the license, or
-*    (at your option) any later version.
+*    Copyright (c) 2014 - 2018 Vivante Corporation
+*
+*    Permission is hereby granted, free of charge, to any person obtaining a
+*    copy of this software and associated documentation files (the "Software"),
+*    to deal in the Software without restriction, including without limitation
+*    the rights to use, copy, modify, merge, publish, distribute, sublicense,
+*    and/or sell copies of the Software, and to permit persons to whom the
+*    Software is furnished to do so, subject to the following conditions:
+*
+*    The above copyright notice and this permission notice shall be included in
+*    all copies or substantial portions of the Software.
+*
+*    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+*    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+*    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+*    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+*    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+*    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+*    DEALINGS IN THE SOFTWARE.
+*
+*****************************************************************************
+*
+*    The GPL License (GPL)
+*
+*    Copyright (C) 2014 - 2018 Vivante Corporation
+*
+*    This program is free software; you can redistribute it and/or
+*    modify it under the terms of the GNU General Public License
+*    as published by the Free Software Foundation; either version 2
+*    of the License, or (at your option) any later version.
 *
 *    This program is distributed in the hope that it will be useful,
 *    but WITHOUT ANY WARRANTY; without even the implied warranty of
-*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 *    GNU General Public License for more details.
 *
 *    You should have received a copy of the GNU General Public License
-*    along with this program; if not write to the Free Software
-*    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+*    along with this program; if not, write to the Free Software Foundation,
+*    Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+*
+*****************************************************************************
+*
+*    Note: This software is released under dual MIT and GPL licenses. A
+*    recipient may use this file under the terms of either the MIT license or
+*    GPL License. If you wish to use only one license not the other, you can
+*    indicate your decision by deleting one of the above license notices in your
+*    version of this file.
 *
 *****************************************************************************/
 
@@ -102,33 +136,33 @@ gcePATHTYPE;
 */
 typedef enum _gceVGCMD
 {
-    gcvVGCMD_END,                        /*  0: GCCMD_TS_OPCODE_END           */
-    gcvVGCMD_CLOSE,                      /*  1: GCCMD_TS_OPCODE_CLOSE         */
-    gcvVGCMD_MOVE,                       /*  2: GCCMD_TS_OPCODE_MOVE          */
-    gcvVGCMD_MOVE_REL,                   /*  3: GCCMD_TS_OPCODE_MOVE_REL      */
-    gcvVGCMD_LINE,                       /*  4: GCCMD_TS_OPCODE_LINE          */
-    gcvVGCMD_LINE_REL,                   /*  5: GCCMD_TS_OPCODE_LINE_REL      */
-    gcvVGCMD_QUAD,                       /*  6: GCCMD_TS_OPCODE_QUADRATIC     */
-    gcvVGCMD_QUAD_REL,                   /*  7: GCCMD_TS_OPCODE_QUADRATIC_REL */
-    gcvVGCMD_CUBIC,                      /*  8: GCCMD_TS_OPCODE_CUBIC         */
-    gcvVGCMD_CUBIC_REL,                  /*  9: GCCMD_TS_OPCODE_CUBIC_REL     */
-    gcvVGCMD_BREAK,                      /* 10: GCCMD_TS_OPCODE_BREAK         */
-    gcvVGCMD_HLINE,                      /* 11: ******* R E S E R V E D *******/
-    gcvVGCMD_HLINE_REL,                  /* 12: ******* R E S E R V E D *******/
-    gcvVGCMD_VLINE,                      /* 13: ******* R E S E R V E D *******/
-    gcvVGCMD_VLINE_REL,                  /* 14: ******* R E S E R V E D *******/
-    gcvVGCMD_SQUAD,                      /* 15: ******* R E S E R V E D *******/
-    gcvVGCMD_SQUAD_REL,                  /* 16: ******* R E S E R V E D *******/
-    gcvVGCMD_SCUBIC,                     /* 17: ******* R E S E R V E D *******/
-    gcvVGCMD_SCUBIC_REL,                 /* 18: ******* R E S E R V E D *******/
-    gcvVGCMD_SCCWARC,                    /* 19: ******* R E S E R V E D *******/
-    gcvVGCMD_SCCWARC_REL,                /* 20: ******* R E S E R V E D *******/
-    gcvVGCMD_SCWARC,                     /* 21: ******* R E S E R V E D *******/
-    gcvVGCMD_SCWARC_REL,                 /* 22: ******* R E S E R V E D *******/
-    gcvVGCMD_LCCWARC,                    /* 23: ******* R E S E R V E D *******/
-    gcvVGCMD_LCCWARC_REL,                /* 24: ******* R E S E R V E D *******/
-    gcvVGCMD_LCWARC,                     /* 25: ******* R E S E R V E D *******/
-    gcvVGCMD_LCWARC_REL,                 /* 26: ******* R E S E R V E D *******/
+    gcvVGCMD_END, /*  0: 0x00           */
+    gcvVGCMD_CLOSE, /*  1: 0x01         */
+    gcvVGCMD_MOVE, /*  2: 0x02          */
+    gcvVGCMD_MOVE_REL, /*  3: 0x03      */
+    gcvVGCMD_LINE, /*  4: 0x04          */
+    gcvVGCMD_LINE_REL, /*  5: 0x05      */
+    gcvVGCMD_QUAD, /*  6: 0x06     */
+    gcvVGCMD_QUAD_REL, /*  7: 0x07 */
+    gcvVGCMD_CUBIC, /*  8: 0x08         */
+    gcvVGCMD_CUBIC_REL, /*  9: 0x09     */
+    gcvVGCMD_BREAK, /* 10: 0x0A         */
+    gcvVGCMD_HLINE, /* 11: ******* R E S E R V E D *******/
+    gcvVGCMD_HLINE_REL, /* 12: ******* R E S E R V E D *******/
+    gcvVGCMD_VLINE, /* 13: ******* R E S E R V E D *******/
+    gcvVGCMD_VLINE_REL, /* 14: ******* R E S E R V E D *******/
+    gcvVGCMD_SQUAD, /* 15: ******* R E S E R V E D *******/
+    gcvVGCMD_SQUAD_REL, /* 16: ******* R E S E R V E D *******/
+    gcvVGCMD_SCUBIC, /* 17: ******* R E S E R V E D *******/
+    gcvVGCMD_SCUBIC_REL, /* 18: ******* R E S E R V E D *******/
+    gcvVGCMD_SCCWARC, /* 19: ******* R E S E R V E D *******/
+    gcvVGCMD_SCCWARC_REL, /* 20: ******* R E S E R V E D *******/
+    gcvVGCMD_SCWARC, /* 21: ******* R E S E R V E D *******/
+    gcvVGCMD_SCWARC_REL, /* 22: ******* R E S E R V E D *******/
+    gcvVGCMD_LCCWARC, /* 23: ******* R E S E R V E D *******/
+    gcvVGCMD_LCCWARC_REL, /* 24: ******* R E S E R V E D *******/
+    gcvVGCMD_LCWARC, /* 25: ******* R E S E R V E D *******/
+    gcvVGCMD_LCWARC_REL, /* 26: ******* R E S E R V E D *******/
 
     /* The width of the command recognized by the hardware on bits. */
     gcvVGCMD_WIDTH = 5,
@@ -137,27 +171,27 @@ typedef enum _gceVGCMD
     gcvVGCMD_MASK = (1 << gcvVGCMD_WIDTH) - 1,
 
     /* Command modifiers. */
-    gcvVGCMD_H_MOD   = 1 << gcvVGCMD_WIDTH,  /* =  32 */
-    gcvVGCMD_V_MOD   = 2 << gcvVGCMD_WIDTH,  /* =  64 */
-    gcvVGCMD_S_MOD   = 3 << gcvVGCMD_WIDTH,  /* =  96 */
-    gcvVGCMD_ARC_MOD = 4 << gcvVGCMD_WIDTH,  /* = 128 */
+    gcvVGCMD_H_MOD   = 1 << gcvVGCMD_WIDTH, /* =  32 */
+    gcvVGCMD_V_MOD   = 2 << gcvVGCMD_WIDTH, /* =  64 */
+    gcvVGCMD_S_MOD   = 3 << gcvVGCMD_WIDTH, /* =  96 */
+    gcvVGCMD_ARC_MOD = 4 << gcvVGCMD_WIDTH, /* = 128 */
 
     /* Emulated LINE commands. */
-    gcvVGCMD_HLINE_EMUL     = gcvVGCMD_H_MOD | gcvVGCMD_LINE,        /* =  36 */
-    gcvVGCMD_HLINE_EMUL_REL = gcvVGCMD_H_MOD | gcvVGCMD_LINE_REL,    /* =  37 */
-    gcvVGCMD_VLINE_EMUL     = gcvVGCMD_V_MOD | gcvVGCMD_LINE,        /* =  68 */
-    gcvVGCMD_VLINE_EMUL_REL = gcvVGCMD_V_MOD | gcvVGCMD_LINE_REL,    /* =  69 */
+    gcvVGCMD_HLINE_EMUL     = gcvVGCMD_H_MOD | gcvVGCMD_LINE, /* =  36 */
+    gcvVGCMD_HLINE_EMUL_REL = gcvVGCMD_H_MOD | gcvVGCMD_LINE_REL, /* =  37 */
+    gcvVGCMD_VLINE_EMUL     = gcvVGCMD_V_MOD | gcvVGCMD_LINE, /* =  68 */
+    gcvVGCMD_VLINE_EMUL_REL = gcvVGCMD_V_MOD | gcvVGCMD_LINE_REL, /* =  69 */
 
     /* Emulated SMOOTH commands. */
-    gcvVGCMD_SQUAD_EMUL      = gcvVGCMD_S_MOD | gcvVGCMD_QUAD,       /* = 102 */
-    gcvVGCMD_SQUAD_EMUL_REL  = gcvVGCMD_S_MOD | gcvVGCMD_QUAD_REL,   /* = 103 */
-    gcvVGCMD_SCUBIC_EMUL     = gcvVGCMD_S_MOD | gcvVGCMD_CUBIC,      /* = 104 */
-    gcvVGCMD_SCUBIC_EMUL_REL = gcvVGCMD_S_MOD | gcvVGCMD_CUBIC_REL,  /* = 105 */
+    gcvVGCMD_SQUAD_EMUL      = gcvVGCMD_S_MOD | gcvVGCMD_QUAD, /* = 102 */
+    gcvVGCMD_SQUAD_EMUL_REL  = gcvVGCMD_S_MOD | gcvVGCMD_QUAD_REL, /* = 103 */
+    gcvVGCMD_SCUBIC_EMUL     = gcvVGCMD_S_MOD | gcvVGCMD_CUBIC, /* = 104 */
+    gcvVGCMD_SCUBIC_EMUL_REL = gcvVGCMD_S_MOD | gcvVGCMD_CUBIC_REL, /* = 105 */
 
     /* Emulation ARC commands. */
-    gcvVGCMD_ARC_LINE     = gcvVGCMD_ARC_MOD | gcvVGCMD_LINE,        /* = 132 */
-    gcvVGCMD_ARC_LINE_REL = gcvVGCMD_ARC_MOD | gcvVGCMD_LINE_REL,    /* = 133 */
-    gcvVGCMD_ARC_QUAD     = gcvVGCMD_ARC_MOD | gcvVGCMD_QUAD,        /* = 134 */
+    gcvVGCMD_ARC_LINE     = gcvVGCMD_ARC_MOD | gcvVGCMD_LINE, /* = 132 */
+    gcvVGCMD_ARC_LINE_REL = gcvVGCMD_ARC_MOD | gcvVGCMD_LINE_REL, /* = 133 */
+    gcvVGCMD_ARC_QUAD     = gcvVGCMD_ARC_MOD | gcvVGCMD_QUAD, /* = 134 */
     gcvVGCMD_ARC_QUAD_REL = gcvVGCMD_ARC_MOD | gcvVGCMD_QUAD_REL     /* = 135 */
 }
 gceVGCMD;
@@ -465,7 +499,7 @@ gcsPATH_DATA;
 gceSTATUS
 gcoHAL_QueryPathStorage(
     IN gcoHAL Hal,
-#if GC355_PROFILER
+#if gcdGC355_PROFILER
     IN gcoVG Vg,
     IN gctUINT TreeDepth,
     IN gctUINT saveLayerTreeDepth,
@@ -478,7 +512,7 @@ gcoHAL_QueryPathStorage(
 gceSTATUS
 gcoHAL_AssociateCompletion(
     IN gcoHAL Hal,
-#if GC355_PROFILER
+#if gcdGC355_PROFILER
     IN gcoVG Vg,
     IN gctUINT TreeDepth,
     IN gctUINT saveLayerTreeDepth,
@@ -491,7 +525,7 @@ gcoHAL_AssociateCompletion(
 gceSTATUS
 gcoHAL_DeassociateCompletion(
     IN gcoHAL Hal,
-#if GC355_PROFILER
+#if gcdGC355_PROFILER
     IN gcoVG Vg,
     IN gctUINT TreeDepth,
     IN gctUINT saveLayerTreeDepth,
@@ -504,7 +538,7 @@ gcoHAL_DeassociateCompletion(
 gceSTATUS
 gcoHAL_CheckCompletion(
     IN gcoHAL Hal,
-#if GC355_PROFILER
+#if gcdGC355_PROFILER
     IN gcoVG Vg,
     IN gctUINT TreeDepth,
     IN gctUINT saveLayerTreeDepth,
@@ -517,7 +551,7 @@ gcoHAL_CheckCompletion(
 gceSTATUS
 gcoHAL_WaitCompletion(
     IN gcoHAL Hal,
-#if GC355_PROFILER
+#if gcdGC355_PROFILER
     IN gcoVG Vg,
     IN gctUINT TreeDepth,
     IN gctUINT saveLayerTreeDepth,
@@ -529,13 +563,14 @@ gcoHAL_WaitCompletion(
 /* Flush the pixel cache. */
 gceSTATUS
 gcoHAL_Flush(
-    IN gcoHAL Hal
-#if GC355_PROFILER
-    ,
+#if gcdGC355_PROFILER
+    IN gcoHAL Hal,
     IN gcoVG Vg,
     IN gctUINT TreeDepth,
     IN gctUINT saveLayerTreeDepth,
     IN gctUINT varTreeDepth
+#else
+    IN gcoHAL Hal
 #endif
     );
 
@@ -543,7 +578,7 @@ gcoHAL_Flush(
 gceSTATUS
 gcoHAL_SplitAddress(
     IN gcoHAL Hal,
-#if GC355_PROFILER
+#if gcdGC355_PROFILER
     IN gcoVG Vg,
     IN gctUINT TreeDepth,
     IN gctUINT saveLayerTreeDepth,
@@ -558,7 +593,7 @@ gcoHAL_SplitAddress(
 gceSTATUS
 gcoHAL_CombineAddress(
     IN gcoHAL Hal,
-#if GC355_PROFILER
+#if gcdGC355_PROFILER
     IN gcoVG Vg,
     IN gctUINT TreeDepth,
     IN gctUINT saveLayerTreeDepth,
@@ -573,7 +608,7 @@ gcoHAL_CombineAddress(
 gceSTATUS
 gcoHAL_ScheduleVideoMemory(
     IN gcoHAL Hal,
-#if GC355_PROFILER
+#if gcdGC355_PROFILER
     IN gcoVG Vg,
     IN gctUINT TreeDepth,
     IN gctUINT saveLayerTreeDepth,
@@ -586,20 +621,21 @@ gcoHAL_ScheduleVideoMemory(
 gceSTATUS
 gcoHAL_FreeVideoMemory(
     IN gcoHAL Hal,
-#if GC355_PROFILER
+#if gcdGC355_PROFILER
     IN gcoVG Vg,
     IN gctUINT TreeDepth,
     IN gctUINT saveLayerTreeDepth,
     IN gctUINT varTreeDepth,
 #endif
-    IN gctUINT32 Node
+    IN gctUINT32 Node,
+    IN gctBOOL asynchroneous
     );
 
 /* Query command buffer attributes. */
 gceSTATUS
 gcoHAL_QueryCommandBuffer(
     IN gcoHAL Hal,
-#if GC355_PROFILER
+#if gcdGC355_PROFILER
     IN gcoVG Vg,
     IN gctUINT TreeDepth,
     IN gctUINT saveLayerTreeDepth,
@@ -611,7 +647,7 @@ gcoHAL_QueryCommandBuffer(
 gceSTATUS
 gcoHAL_AllocateLinearVideoMemory(
     IN gcoHAL Hal,
-#if GC355_PROFILER
+#if gcdGC355_PROFILER
     IN gcoVG Vg,
     IN gctUINT TreeDepth,
     IN gctUINT saveLayerTreeDepth,
@@ -629,7 +665,7 @@ gcoHAL_AllocateLinearVideoMemory(
 gceSTATUS
 gcoHAL_GetAlignedSurfaceSize(
     IN gcoHAL Hal,
-#if GC355_PROFILER
+#if gcdGC355_PROFILER
     IN gcoVG Vg,
     IN gctUINT TreeDepth,
     IN gctUINT saveLayerTreeDepth,
@@ -643,7 +679,7 @@ gcoHAL_GetAlignedSurfaceSize(
 gceSTATUS
 gcoHAL_ReserveTask(
     IN gcoHAL Hal,
-#if GC355_PROFILER
+#if gcdGC355_PROFILER
     IN gcoVG Vg,
     IN gctUINT TreeDepth,
     IN gctUINT saveLayerTreeDepth,
@@ -662,7 +698,7 @@ gcoHAL_ReserveTask(
 **
 **  The gcoVG object abstracts the VG hardware pipe.
 */
-#if GC355_PROFILER
+#if gcdGC355_PROFILER
 void
 gcoVG_ProfilerEnableDisable(
     IN gcoVG Vg,
@@ -687,7 +723,7 @@ gcoVG_ProfilerSetStates(
 
 gctBOOL
 gcoVG_IsMaskSupported(
-#if GC355_PROFILER
+#if gcdGC355_PROFILER
     IN gcoVG Vg,
     IN gctUINT TreeDepth,
     IN gctUINT saveLayerTreeDepth,
@@ -698,7 +734,7 @@ gcoVG_IsMaskSupported(
 
 gctBOOL
 gcoVG_IsTargetSupported(
-#if GC355_PROFILER
+#if gcdGC355_PROFILER
     IN gcoVG Vg,
     IN gctUINT TreeDepth,
     IN gctUINT saveLayerTreeDepth,
@@ -709,7 +745,7 @@ gcoVG_IsTargetSupported(
 
 gctBOOL
 gcoVG_IsImageSupported(
-#if GC355_PROFILER
+#if gcdGC355_PROFILER
     IN gcoVG Vg,
     IN gctUINT TreeDepth,
     IN gctUINT saveLayerTreeDepth,
@@ -719,7 +755,7 @@ gcoVG_IsImageSupported(
     );
 
 gctUINT8 gcoVG_PackColorComponent(
-#if GC355_PROFILER
+#if gcdGC355_PROFILER
     gcoVG Vg,
     gctUINT TreeDepth,
     gctUINT saveLayerTreeDepth,
@@ -737,8 +773,8 @@ gcoVG_Construct(
 gceSTATUS
 gcoVG_Destroy(
     IN gcoVG Vg
-#if GC355_PROFILER
-    ,
+#if gcdGC355_PROFILER
+,
     IN gctUINT TreeDepth,
     IN gctUINT saveLayerTreeDepth,
     IN gctUINT varTreeDepth
@@ -748,18 +784,19 @@ gcoVG_Destroy(
 gceSTATUS
 gcoVG_SetTarget(
     IN gcoVG Vg,
-#if GC355_PROFILER
+#if gcdGC355_PROFILER
     IN gctUINT TreeDepth,
     IN gctUINT saveLayerTreeDepth,
     IN gctUINT varTreeDepth,
 #endif
-    IN gcoSURF Target
+    IN gcoSURF Target,
+    IN gceORIENTATION orientation
     );
 
 gceSTATUS
 gcoVG_UnsetTarget(
     IN gcoVG Vg,
-#if GC355_PROFILER
+#if gcdGC355_PROFILER
     IN gctUINT TreeDepth,
     IN gctUINT saveLayerTreeDepth,
     IN gctUINT varTreeDepth,
@@ -770,7 +807,7 @@ gcoVG_UnsetTarget(
 gceSTATUS
 gcoVG_SetUserToSurface(
     IN gcoVG Vg,
-#if GC355_PROFILER
+#if gcdGC355_PROFILER
     IN gctUINT TreeDepth,
     IN gctUINT saveLayerTreeDepth,
     IN gctUINT varTreeDepth,
@@ -781,7 +818,7 @@ gcoVG_SetUserToSurface(
 gceSTATUS
 gcoVG_SetSurfaceToImage(
     IN gcoVG Vg,
-#if GC355_PROFILER
+#if gcdGC355_PROFILER
     IN gctUINT TreeDepth,
     IN gctUINT saveLayerTreeDepth,
     IN gctUINT varTreeDepth,
@@ -792,7 +829,7 @@ gcoVG_SetSurfaceToImage(
 gceSTATUS
 gcoVG_EnableMask(
     IN gcoVG Vg,
-#if GC355_PROFILER
+#if gcdGC355_PROFILER
     IN gctUINT TreeDepth,
     IN gctUINT saveLayerTreeDepth,
     IN gctUINT varTreeDepth,
@@ -803,7 +840,7 @@ gcoVG_EnableMask(
 gceSTATUS
 gcoVG_SetMask(
     IN gcoVG Vg,
-#if GC355_PROFILER
+#if gcdGC355_PROFILER
     IN gctUINT TreeDepth,
     IN gctUINT saveLayerTreeDepth,
     IN gctUINT varTreeDepth,
@@ -814,7 +851,7 @@ gcoVG_SetMask(
 gceSTATUS
 gcoVG_UnsetMask(
     IN gcoVG Vg,
-#if GC355_PROFILER
+#if gcdGC355_PROFILER
     IN gctUINT TreeDepth,
     IN gctUINT saveLayerTreeDepth,
     IN gctUINT varTreeDepth,
@@ -825,8 +862,8 @@ gcoVG_UnsetMask(
 gceSTATUS
 gcoVG_FlushMask(
     IN gcoVG Vg
-#if GC355_PROFILER
-    ,
+#if gcdGC355_PROFILER
+,
     IN gctUINT TreeDepth,
     IN gctUINT saveLayerTreeDepth,
     IN gctUINT varTreeDepth
@@ -836,7 +873,7 @@ gcoVG_FlushMask(
 gceSTATUS
 gcoVG_EnableScissor(
     IN gcoVG Vg,
-#if GC355_PROFILER
+#if gcdGC355_PROFILER
     IN gctUINT TreeDepth,
     IN gctUINT saveLayerTreeDepth,
     IN gctUINT varTreeDepth,
@@ -847,7 +884,7 @@ gcoVG_EnableScissor(
 gceSTATUS
 gcoVG_SetScissor(
     IN gcoVG Vg,
-#if GC355_PROFILER
+#if gcdGC355_PROFILER
     IN gctUINT TreeDepth,
     IN gctUINT saveLayerTreeDepth,
     IN gctUINT varTreeDepth,
@@ -859,7 +896,7 @@ gcoVG_SetScissor(
 gceSTATUS
 gcoVG_EnableColorTransform(
     IN gcoVG Vg,
-#if GC355_PROFILER
+#if gcdGC355_PROFILER
     IN gctUINT TreeDepth,
     IN gctUINT saveLayerTreeDepth,
     IN gctUINT varTreeDepth,
@@ -870,7 +907,7 @@ gcoVG_EnableColorTransform(
 gceSTATUS
 gcoVG_SetColorTransform(
     IN gcoVG Vg,
-#if GC355_PROFILER
+#if gcdGC355_PROFILER
     IN gctUINT TreeDepth,
     IN gctUINT saveLayerTreeDepth,
     IN gctUINT varTreeDepth,
@@ -881,7 +918,7 @@ gcoVG_SetColorTransform(
 gceSTATUS
 gcoVG_SetTileFillColor(
     IN gcoVG Vg,
-#if GC355_PROFILER
+#if gcdGC355_PROFILER
     IN gctUINT TreeDepth,
     IN gctUINT saveLayerTreeDepth,
     IN gctUINT varTreeDepth,
@@ -895,7 +932,7 @@ gcoVG_SetTileFillColor(
 gceSTATUS
 gcoVG_SetSolidPaint(
     IN gcoVG Vg,
-#if GC355_PROFILER
+#if gcdGC355_PROFILER
     IN gctUINT TreeDepth,
     IN gctUINT saveLayerTreeDepth,
     IN gctUINT varTreeDepth,
@@ -909,7 +946,7 @@ gcoVG_SetSolidPaint(
 gceSTATUS
 gcoVG_SetLinearPaint(
     IN gcoVG Vg,
-#if GC355_PROFILER
+#if gcdGC355_PROFILER
     IN gctUINT TreeDepth,
     IN gctUINT saveLayerTreeDepth,
     IN gctUINT varTreeDepth,
@@ -922,7 +959,7 @@ gcoVG_SetLinearPaint(
 gceSTATUS
 gcoVG_SetRadialPaint(
     IN gcoVG Vg,
-#if GC355_PROFILER
+#if gcdGC355_PROFILER
     IN gctUINT TreeDepth,
     IN gctUINT saveLayerTreeDepth,
     IN gctUINT varTreeDepth,
@@ -941,7 +978,7 @@ gcoVG_SetRadialPaint(
 gceSTATUS
 gcoVG_SetPatternPaint(
     IN gcoVG Vg,
-#if GC355_PROFILER
+#if gcdGC355_PROFILER
     IN gctUINT TreeDepth,
     IN gctUINT saveLayerTreeDepth,
     IN gctUINT varTreeDepth,
@@ -958,7 +995,7 @@ gcoVG_SetPatternPaint(
 gceSTATUS
 gcoVG_SetColorRamp(
     IN gcoVG Vg,
-#if GC355_PROFILER
+#if gcdGC355_PROFILER
     IN gctUINT TreeDepth,
     IN gctUINT saveLayerTreeDepth,
     IN gctUINT varTreeDepth,
@@ -970,7 +1007,7 @@ gcoVG_SetColorRamp(
 gceSTATUS
 gcoVG_SetPattern(
     IN gcoVG Vg,
-#if GC355_PROFILER
+#if gcdGC355_PROFILER
     IN gctUINT TreeDepth,
     IN gctUINT saveLayerTreeDepth,
     IN gctUINT varTreeDepth,
@@ -985,7 +1022,7 @@ gcoVG_SetPattern(
 gceSTATUS
 gcoVG_SetImageMode(
     IN gcoVG Vg,
-#if GC355_PROFILER
+#if gcdGC355_PROFILER
     IN gctUINT TreeDepth,
     IN gctUINT saveLayerTreeDepth,
     IN gctUINT varTreeDepth,
@@ -996,7 +1033,7 @@ gcoVG_SetImageMode(
 gceSTATUS
 gcoVG_SetBlendMode(
     IN gcoVG Vg,
-#if GC355_PROFILER
+#if gcdGC355_PROFILER
     IN gctUINT TreeDepth,
     IN gctUINT saveLayerTreeDepth,
     IN gctUINT varTreeDepth,
@@ -1007,7 +1044,7 @@ gcoVG_SetBlendMode(
 gceSTATUS
 gcoVG_SetRenderingQuality(
     IN gcoVG Vg,
-#if GC355_PROFILER
+#if gcdGC355_PROFILER
     IN gctUINT TreeDepth,
     IN gctUINT saveLayerTreeDepth,
     IN gctUINT varTreeDepth,
@@ -1018,7 +1055,7 @@ gcoVG_SetRenderingQuality(
 gceSTATUS
 gcoVG_SetFillRule(
     IN gcoVG Vg,
-#if GC355_PROFILER
+#if gcdGC355_PROFILER
     IN gctUINT TreeDepth,
     IN gctUINT saveLayerTreeDepth,
     IN gctUINT varTreeDepth,
@@ -1035,7 +1072,7 @@ gcoVG_FinalizePath(
 gceSTATUS
 gcoVG_Clear(
     IN gcoVG Vg,
-#if GC355_PROFILER
+#if gcdGC355_PROFILER
     IN gctUINT TreeDepth,
     IN gctUINT saveLayerTreeDepth,
     IN gctUINT varTreeDepth,
@@ -1049,7 +1086,7 @@ gcoVG_Clear(
 gceSTATUS
 gcoVG_DrawPath(
     IN gcoVG Vg,
-#if GC355_PROFILER
+#if gcdGC355_PROFILER
     IN gctUINT TreeDepth,
     IN gctUINT saveLayerTreeDepth,
     IN gctUINT varTreeDepth,
@@ -1068,11 +1105,12 @@ gcoVG_DrawPath(
 gceSTATUS
 gcoVG_DrawImage(
     IN gcoVG Vg,
-#if GC355_PROFILER
+#if gcdGC355_PROFILER
     IN gctUINT TreeDepth,
     IN gctUINT saveLayerTreeDepth,
     IN gctUINT varTreeDepth,
 #endif
+    IN gceORIENTATION orientation,
     IN gcoSURF Source,
     IN gcsPOINT_PTR SourceOrigin,
     IN gcsPOINT_PTR TargetOrigin,
@@ -1090,7 +1128,7 @@ gcoVG_DrawImage(
 gceSTATUS
 gcoVG_TesselateImage(
     IN gcoVG Vg,
-#if GC355_PROFILER
+#if gcdGC355_PROFILER
     IN gctUINT TreeDepth,
     IN gctUINT saveLayerTreeDepth,
     IN gctUINT varTreeDepth,
@@ -1101,16 +1139,35 @@ gcoVG_TesselateImage(
     IN gctBOOL Mask,
 #if gcdMOVG
     IN gctBOOL SoftwareTesselation,
-    IN gceVG_BLEND BlendMode
+    IN gceVG_BLEND BlendMode,
+    IN gctINT Width,
+    IN gctINT Height
 #else
     IN gctBOOL SoftwareTesselation
 #endif
     );
 
 gceSTATUS
+gcoVG_DrawSurfaceToImage(
+    IN gcoVG Vg,
+#if gcdGC355_PROFILER
+    IN gctUINT TreeDepth,
+    IN gctUINT saveLayerTreeDepth,
+    IN gctUINT varTreeDepth,
+#endif
+    IN gcoSURF Image,
+    IN const gcsVG_RECT_PTR SrcRectangle,
+    IN const gcsVG_RECT_PTR DstRectangle,
+    IN const gctFLOAT Matrix[9],
+    IN gceIMAGE_FILTER Filter,
+    IN gctBOOL Mask,
+    IN gctBOOL FirstTime
+    );
+
+gceSTATUS
 gcoVG_Blit(
     IN gcoVG Vg,
-#if GC355_PROFILER
+#if gcdGC355_PROFILER
     IN gctUINT TreeDepth,
     IN gctUINT saveLayerTreeDepth,
     IN gctUINT varTreeDepth,
@@ -1126,7 +1183,7 @@ gcoVG_Blit(
 gceSTATUS
 gcoVG_ColorMatrix(
     IN gcoVG Vg,
-#if GC355_PROFILER
+#if gcdGC355_PROFILER
     IN gctUINT TreeDepth,
     IN gctUINT saveLayerTreeDepth,
     IN gctUINT varTreeDepth,
@@ -1146,7 +1203,7 @@ gcoVG_ColorMatrix(
 gceSTATUS
 gcoVG_SeparableConvolve(
     IN gcoVG Vg,
-#if GC355_PROFILER
+#if gcdGC355_PROFILER
     IN gctUINT TreeDepth,
     IN gctUINT saveLayerTreeDepth,
     IN gctUINT varTreeDepth,
@@ -1176,7 +1233,7 @@ gcoVG_SeparableConvolve(
 gceSTATUS
 gcoVG_GaussianBlur(
     IN gcoVG Vg,
-#if GC355_PROFILER
+#if gcdGC355_PROFILER
     IN gctUINT TreeDepth,
     IN gctUINT saveLayerTreeDepth,
     IN gctUINT varTreeDepth,
@@ -1200,7 +1257,7 @@ gcoVG_GaussianBlur(
 gceSTATUS
 gcoVG_EnableDither(
     IN gcoVG Vg,
-#if GC355_PROFILER
+#if gcdGC355_PROFILER
     IN gctUINT TreeDepth,
     IN gctUINT saveLayerTreeDepth,
     IN gctUINT varTreeDepth,
@@ -1208,8 +1265,56 @@ gcoVG_EnableDither(
     IN gctBOOL Enable
     );
 
+/* Color Key States. */
+gceSTATUS
+gcoVG_SetColorKey(
+    IN gcoVG        Vg,
+#if gcdGC355_PROFILER
+    IN gcsPROFILERFUNCNODE *DList,
+    IN gctUINT TreeDepth,
+    IN gctUINT saveLayerTreeDepth,
+    IN gctUINT varTreeDepth,
+#endif
+    IN gctUINT32*    Values,
+    IN gctBOOL *    Enables
+);
+
+/* Index Color States. */
+gceSTATUS
+gcoVG_SetColorIndexTable(
+    IN gcoVG        Vg,
+#if gcdGC355_PROFILER
+    IN gcsPROFILERFUNCNODE *DList,
+    IN gctUINT TreeDepth,
+    IN gctUINT saveLayerTreeDepth,
+    IN gctUINT varTreeDepth,
+#endif
+    IN gctUINT32*    Values,
+    IN gctINT32      Count
+);
+
+/* VG RS feature support: YUV format conversion. */
+gceSTATUS
+gcoVG_Resolve(
+    IN gcoVG        Vg,
+    IN gcoSURF      Source,
+    IN gcoSURF      Target,
+    IN gctINT       SX,
+    IN gctINT       SY,
+    IN gctINT       DX,
+    IN gctINT       DY,
+    IN gctINT       Width,
+    IN gctINT       Height,
+    IN gctINT       Src_uv,
+    IN gctINT       Src_standard,
+    IN gctINT       Dst_uv,
+    IN gctINT       Dst_standard,
+    IN gctINT       Dst_alpha
+);
 #ifdef __cplusplus
 }
 #endif
 
 #endif  /* __gc_hal_vg_h_ */
+
+

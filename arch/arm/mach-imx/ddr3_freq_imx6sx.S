@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2014 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright (C) 2011-2015 Freescale Semiconductor, Inc. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -15,8 +15,8 @@
 #include <linux/linkage.h>
 #include "hardware.h"
 
-.globl imx6sx_ddr3_freq_change_start
-.globl imx6sx_ddr3_freq_change_end
+.globl imx6_up_ddr3_freq_change_start
+.globl imx6_up_ddr3_freq_change_end
 
 #define MMDC0_MDPDC		0x4
 #define MMDC0_MDCF0		0xc
@@ -36,6 +36,13 @@
 #define CCM_CDHIPR		0x48
 
 #define L2_CACHE_SYNC		0x730
+#define PL310_AUX_CTRL          0x104
+#define PL310_DCACHE_LOCKDOWN_BASE 0x900
+#define PL310_AUX_16WAY_BIT	0x10000
+#define PL310_LOCKDOWN_NBREGS   8
+#define PL310_LOCKDOWN_SZREG    4
+#define PL310_8WAYS_MASK        0x00FF
+#define PL310_16WAYS_UPPERMASK  0xFF00
 
 #define BUSFREQ_INFO_FREQ_OFFSET		0x0
 #define BUSFREQ_INFO_DDR_SETTINGS_OFFSET	0x4
@@ -46,6 +53,18 @@
 .extern iram_tlb_phys_addr
 
 	.align 3
+
+	/* Check if the cpu is cortex-a7 */
+	.macro is_ca7
+
+	/* Read the primary cpu number is MPIDR */
+	mrc	p15, 0, r7, c0, c0, 0
+	ldr	r8, =0xfff0
+	and	r7, r7, r8
+	ldr	r8, =0xc070
+	cmp	r7, r8
+
+	.endm
 
 	.macro do_delay
 
@@ -160,15 +179,16 @@ skip_periph2_clk2_switch_50m:
 	.endm
 
 /*
- *  imx6sx_ddr3_freq_change
+ *  imx6_up_ddr3_freq_change
+ *  Below code can be used by i.MX6SX and i.MX6UL.
  *
  *  idle the processor (eg, wait for interrupt).
  *  make sure DDR is in self-refresh.
  *  IRQs are already disabled.
  */
-ENTRY(imx6sx_ddr3_freq_change)
+ENTRY(imx6_up_ddr3_freq_change)
 
-imx6sx_ddr3_freq_change_start:
+imx6_up_ddr3_freq_change_start:
 	stmfd	sp!, {r4 - r11}
 
 	ldr	r1, [r0, #BUSFREQ_INFO_DDR_SETTINGS_OFFSET]
@@ -230,6 +250,9 @@ imx6sx_ddr3_freq_change_start:
 	ldr	r5, =IMX_IO_P2V(MX6Q_CCM_BASE_ADDR)
 	ldr	r6, =IMX_IO_P2V(MX6Q_IOMUXC_BASE_ADDR)
 
+	is_ca7
+	beq	skip_disable_l2
+
 #ifdef CONFIG_CACHE_L2X0
 	/*
 	 * make sure the L2 buffers are drained,
@@ -246,9 +269,19 @@ wait_for_l2_to_idle:
 	mov	r7, #0x0
 	str	r7, [r8, #L2_CACHE_SYNC]
 
-	/* Disable L2. */
-	mov	r7, #0x0
-	str	r7, [r8, #0x100]
+	/* Lock L2. */
+
+	ldr	r9, [r8, #PL310_AUX_CTRL]
+	tst	r9, #PL310_AUX_16WAY_BIT
+	mov	r9, #PL310_8WAYS_MASK
+	orrne	r9, #PL310_16WAYS_UPPERMASK
+	mov	r10, #PL310_LOCKDOWN_NBREGS
+	add	r11, r8, #PL310_DCACHE_LOCKDOWN_BASE
+1:	/* lock Dcache and Icache */
+	str	r9, [r11], #PL310_LOCKDOWN_SZREG
+	str	r9, [r11], #PL310_LOCKDOWN_SZREG
+	subs	r10, r10, #1
+	bne	1b
 
 	/*
 	 * The second dsb might be needed to keep cache sync (device write)
@@ -258,6 +291,7 @@ wait_for_l2_to_idle:
 	isb
 #endif
 
+skip_disable_l2:
 	/* disable automatic power saving. */
 	ldr	r8, [r4, #MMDC0_MAPSR]
 	orr	r8, r8, #0x1
@@ -384,7 +418,11 @@ poll_dvfs_clear_1:
 	orr	r8, r8, #0x4
 	str	r8, [r4, #MMDC0_MDCF1]
 
-	ldr	r8, =0x00091680
+	ldr	r8, [r4, #MMDC0_MDMISC]
+	bic	r8, r8, #(0x3 << 16) /* walat = 0x1 */
+	orr	r8, r8, #(0x1 << 16)
+	bic	r8, r8, #(0x7 << 6)  /* ralat = 0x2 */
+	orr	r8, r8, #(0x2 << 6)
 	str	r8, [r4, #MMDC0_MDMISC]
 
 	/* enable dqs pull down in the IOMUX. */
@@ -489,7 +527,9 @@ poll_dvfs_clear_2:
 	cmp	r2, #0
 	beq	update_calibration_only
 
-	ldr	r8, =0xa5390003
+	/* issue zq calibration command */
+	ldr	r8, [r4, #MMDC0_MPZQHWCTRL]
+	orr	r8, r8, #0x3
 	str	r8, [r4, #MMDC0_MPZQHWCTRL]
 
 	/* enable DQS gating. */
@@ -533,10 +573,6 @@ update_iomux1:
 	ldr	r11, [r1, #0x4]
 	str	r11, [r4, r10]
 	add	r1, r1, #8
-
-	/* update MISC register: WALAT, RALAT */
-	ldr	r8, =0x00081740
-	str	r8, [r4, #MMDC0_MDMISC]
 
 	/* configure ddr devices to dll on, odt. */
 	ldr	r8, =0x00028031
@@ -660,13 +696,27 @@ done:
 	bic	r8, r8, #0x01
 	str	r8, [r4, #MMDC0_MAPSR]
 
+	is_ca7
+	beq	skip_enable_l2
+
 #ifdef CONFIG_CACHE_L2X0
-	/* Enable L2. */
+	/* Unlock L2. */
 	ldr	r8, =IMX_IO_P2V(MX6Q_L2_BASE_ADDR)
-	ldr	r7, =0x1
-	str	r7, [r8, #0x100]
+	ldr	r9, [r8, #PL310_AUX_CTRL]
+	tst	r9, #PL310_AUX_16WAY_BIT
+	mov	r10, #PL310_LOCKDOWN_NBREGS
+	mov	r9, #0x00	/* 8 ways mask */
+	orrne	r9, #0x0000	/* 16 ways mask */
+	add	r11, r8, #PL310_DCACHE_LOCKDOWN_BASE
+1:	/* lock Dcache and Icache */
+	str	r9, [r11], #PL310_LOCKDOWN_SZREG
+	str	r9, [r11], #PL310_LOCKDOWN_SZREG
+	subs	r10, r10, #1
+	bne	1b
+
 #endif
 
+skip_enable_l2:
 	/* Enable L1 data cache. */
 	mrc	p15, 0, r7, c1, c0, 0
 	orr	r7, r7, #0x4
@@ -710,5 +760,5 @@ done:
 	 * within the text space.
 	 */
 	.ltorg
-imx6sx_ddr3_freq_change_end:
-ENDPROC(imx6sx_ddr3_freq_change)
+imx6_up_ddr3_freq_change_end:
+ENDPROC(imx6_up_ddr3_freq_change)

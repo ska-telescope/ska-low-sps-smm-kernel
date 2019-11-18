@@ -17,14 +17,38 @@ properties:
   enabled.
 * 'asym-pause' (boolean, optional), to indicate that asym_pause should
   be enabled.
+* 'link-gpios' ('gpio-list', optional), to indicate if a gpio can be read
+  to determine if the link is up.
 
-Example:
+Old, deprecated 'fixed-link' binding:
+
+* A 'fixed-link' property in the Ethernet MAC node, with 5 cells, of the
+  form <a b c d e> with the following accepted values:
+  - a: emulated PHY ID, choose any but but unique to the all specified
+    fixed-links, from 0 to 31
+  - b: duplex configuration: 0 for half duplex, 1 for full duplex
+  - c: link speed in Mbits/sec, accepted values are: 10, 100 and 1000
+  - d: pause configuration: 0 for no pause, 1 for pause
+  - e: asymmetric pause configuration: 0 for no asymmetric pause, 1 for
+    asymmetric pause
+
+Examples:
 
 ethernet@0 {
 	...
 	fixed-link {
 	      speed = <1000>;
 	      full-duplex;
+	};
+	...
+};
+
+ethernet@1 {
+	...
+	fixed-link {
+	      speed = <1000>;
+	      pause;
+	      link-gpios = <&gpio0 12 GPIO_ACTIVE_HIGH>;
 	};
 	...
 };

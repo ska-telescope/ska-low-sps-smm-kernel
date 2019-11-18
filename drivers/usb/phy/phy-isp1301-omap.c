@@ -94,9 +94,9 @@ struct isp1301 {
 
 #if defined(CONFIG_MACH_OMAP_H2) || defined(CONFIG_MACH_OMAP_H3)
 
-#if	defined(CONFIG_TPS65010) || defined(CONFIG_TPS65010_MODULE)
+#if IS_REACHABLE(CONFIG_TPS65010)
 
-#include <linux/i2c/tps65010.h>
+#include <linux/mfd/tps65010.h>
 
 #else
 
@@ -258,7 +258,7 @@ static void power_down(struct isp1301 *isp)
 	isp1301_clear_bits(isp, ISP1301_MODE_CONTROL_1, MC1_DAT_SE0);
 }
 
-static void power_up(struct isp1301 *isp)
+static void __maybe_unused power_up(struct isp1301 *isp)
 {
 	// isp1301_clear_bits(isp, ISP1301_MODE_CONTROL_2, MC2_GLOBAL_PWR_DN);
 	isp1301_clear_bits(isp, ISP1301_MODE_CONTROL_1, MC1_SUSPEND);
@@ -878,7 +878,6 @@ static struct platform_driver omap_otg_driver = {
 	.probe		= otg_probe,
 	.remove		= otg_remove,
 	.driver		= {
-		.owner	= THIS_MODULE,
 		.name	= "omap_otg",
 	},
 };
@@ -1011,7 +1010,7 @@ static void isp_update_otg(struct isp1301 *isp, u8 stat)
 				break;
 			case OTG_STATE_A_WAIT_VFALL:
 				state = OTG_STATE_A_IDLE;
-				/* khubd may take a while to notice and
+				/* hub_wq may take a while to notice and
 				 * handle this disconnect, so don't go
 				 * to B_IDLE quite yet.
 				 */

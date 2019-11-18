@@ -14,7 +14,7 @@
 #include <linux/agp_backend.h>
 #include <linux/mmzone.h>
 #include <asm/page.h>		/* PAGE_SIZE */
-#include <asm/e820.h>
+#include <asm/e820/api.h>
 #include <asm/amd_nb.h>
 #include <asm/gart.h>
 #include "agp.h"
@@ -610,7 +610,7 @@ static int agp_amd64_resume(struct pci_dev *pdev)
 
 #endif /* CONFIG_PM */
 
-static struct pci_device_id agp_amd64_pci_table[] = {
+static const struct pci_device_id agp_amd64_pci_table[] = {
 	{
 	.class		= (PCI_CLASS_BRIDGE_HOST << 8),
 	.class_mask	= ~0,
@@ -813,6 +813,6 @@ static void __exit agp_amd64_cleanup(void)
 module_init(agp_amd64_mod_init);
 module_exit(agp_amd64_cleanup);
 
-MODULE_AUTHOR("Dave Jones <davej@redhat.com>, Andi Kleen");
+MODULE_AUTHOR("Dave Jones, Andi Kleen");
 module_param(agp_try_unsupported, bool, 0);
 MODULE_LICENSE("GPL");

@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 #ifndef GSPCAV2_H
 #define GSPCAV2_H
 
@@ -205,6 +206,7 @@ struct gspca_dev {
 	char memory;			/* memory type (V4L2_MEMORY_xxx) */
 	__u8 iface;			/* USB interface number */
 	__u8 alt;			/* USB alternate setting */
+	int xfer_ep;			/* USB transfer endpoint address */
 	u8 audio;			/* presence of audio device */
 
 	/* (*) These variables are proteced by both usb_lock and queue_lock,
@@ -234,6 +236,6 @@ int gspca_resume(struct usb_interface *intf);
 int gspca_expo_autogain(struct gspca_dev *gspca_dev, int avg_lum,
 	int desired_avg_lum, int deadzone, int gain_knee, int exposure_knee);
 int gspca_coarse_grained_expo_autogain(struct gspca_dev *gspca_dev,
-        int avg_lum, int desired_avg_lum, int deadzone);
+	int avg_lum, int desired_avg_lum, int deadzone);
 
 #endif /* GSPCAV2_H */

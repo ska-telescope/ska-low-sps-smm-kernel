@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2014 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2015 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -183,8 +183,7 @@ typedef struct _cam_data {
 	struct v4l2_rect crop_defrect;
 	struct v4l2_rect crop_current;
 
-	int (*enc_update_eba) (struct ipu_soc *ipu, dma_addr_t eba,
-			       int *bufferNum);
+	int (*enc_update_eba) (void *private, dma_addr_t eba);
 	int (*enc_enable) (void *private);
 	int (*enc_disable) (void *private);
 	int (*enc_enable_csi) (void *private);
@@ -234,11 +233,22 @@ typedef struct _cam_data {
 } cam_data;
 
 struct sensor_data {
-	struct platform_device* platform_data;
+	const struct ov5642_platform_data *platform_data;
 	struct v4l2_int_device *v4l2_int_device;
+	struct i2c_client *i2c_client;
 	struct v4l2_pix_format pix;
 	struct v4l2_captureparm streamcap;
 	bool on;
+
+	/* control settings */
+	int brightness;
+	int hue;
+	int contrast;
+	int saturation;
+	int red;
+	int green;
+	int blue;
+	int ae_mode;
 
 	u32 mclk;
 	u8 mclk_source;

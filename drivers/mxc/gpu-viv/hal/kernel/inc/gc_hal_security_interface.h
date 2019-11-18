@@ -1,20 +1,54 @@
 /****************************************************************************
 *
-*    Copyright (C) 2005 - 2014 by Vivante Corp.
+*    The MIT License (MIT)
 *
-*    This program is free software; you can redistribute it and/or modify
-*    it under the terms of the GNU General Public License as published by
-*    the Free Software Foundation; either version 2 of the license, or
-*    (at your option) any later version.
+*    Copyright (c) 2014 - 2018 Vivante Corporation
+*
+*    Permission is hereby granted, free of charge, to any person obtaining a
+*    copy of this software and associated documentation files (the "Software"),
+*    to deal in the Software without restriction, including without limitation
+*    the rights to use, copy, modify, merge, publish, distribute, sublicense,
+*    and/or sell copies of the Software, and to permit persons to whom the
+*    Software is furnished to do so, subject to the following conditions:
+*
+*    The above copyright notice and this permission notice shall be included in
+*    all copies or substantial portions of the Software.
+*
+*    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+*    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+*    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+*    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+*    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+*    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+*    DEALINGS IN THE SOFTWARE.
+*
+*****************************************************************************
+*
+*    The GPL License (GPL)
+*
+*    Copyright (C) 2014 - 2018 Vivante Corporation
+*
+*    This program is free software; you can redistribute it and/or
+*    modify it under the terms of the GNU General Public License
+*    as published by the Free Software Foundation; either version 2
+*    of the License, or (at your option) any later version.
 *
 *    This program is distributed in the hope that it will be useful,
 *    but WITHOUT ANY WARRANTY; without even the implied warranty of
-*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 *    GNU General Public License for more details.
 *
 *    You should have received a copy of the GNU General Public License
-*    along with this program; if not write to the Free Software
-*    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+*    along with this program; if not, write to the Free Software Foundation,
+*    Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+*
+*****************************************************************************
+*
+*    Note: This software is released under dual MIT and GPL licenses. A
+*    recipient may use this file under the terms of either the MIT license or
+*    GPL License. If you wish to use only one license not the other, you can
+*    indicate your decision by deleting one of the above license notices in your
+*    version of this file.
 *
 *****************************************************************************/
 
@@ -30,22 +64,21 @@
 typedef enum kernel_packet_command {
     KERNEL_START_COMMAND,
     KERNEL_SUBMIT,
-    KERNEL_MAP_MEMORY,                    /* */
+    KERNEL_MAP_MEMORY, /* */
     KERNEL_UNMAP_MEMORY,
-    KERNEL_ALLOCATE_SECRUE_MEMORY,        /*! Security memory management. */
+    KERNEL_ALLOCATE_SECRUE_MEMORY, /*! Security memory management. */
     KERNEL_FREE_SECURE_MEMORY,
-    KERNEL_EXECUTE,                       /* Execute a command buffer. */
+    KERNEL_EXECUTE, /* Execute a command buffer. */
+    KERNEL_DUMP_MMU_EXCEPTION,
+    KERNEL_HANDLE_MMU_EXCEPTION,
+    KERNEL_READ_MMU_EXCEPTION,
 } kernel_packet_command_t;
 
-/*!
- @brief gckCOMMAND Object requests TrustZone to start FE.
- @discussion
- DMA enabled register can only be written in TrustZone to avoid GPU from jumping to a hacked code.
- Kernel module need use these command to ask TrustZone start command parser.
- */
 struct kernel_start_command {
     kernel_packet_command_t command;      /*! The command (always needs to be the first entry in a structure). */
     gctUINT8       gpu;                    /*! Which GPU. */
+    gctUINT32      address;
+    gctUINT32      bytes;
 };
 
 /*!
@@ -104,6 +137,7 @@ struct kernel_map_memory {
     kernel_packet_command_t command;
     kernel_map_scatter_gather_t *scatter;
     gctUINT32       *physicals;
+    gctPHYS_ADDR_T  physical;   /*! Contiguous physical address range. */
     gctUINT32       pageCount;
     gctUINT32       gpuAddress;
 };
@@ -111,6 +145,17 @@ struct kernel_map_memory {
 struct kernel_unmap_memory {
     gctUINT32       gpuAddress;
     gctUINT32       pageCount;
+};
+
+struct kernel_read_mmu_exception {
+    gctUINT32       mmuStatus;
+    gctUINT32       mmuException;
+};
+
+struct kernel_handle_mmu_exception {
+    gctUINT32       mmuStatus;
+    gctPHYS_ADDR_T  physical;
+    gctUINT32       gpuAddress;
 };
 
 typedef struct _gcsTA_INTERFACE {
@@ -122,6 +167,8 @@ typedef struct _gcsTA_INTERFACE {
         struct kernel_execute                  Execute;
         struct kernel_map_memory               MapMemory;
         struct kernel_unmap_memory             UnmapMemory;
+        struct kernel_read_mmu_exception       ReadMMUException;
+        struct kernel_handle_mmu_exception     HandleMMUException;
     } u;
     gceSTATUS result;
 } gcsTA_INTERFACE;
@@ -135,3 +182,5 @@ enum {
 };
 
 #endif
+
+

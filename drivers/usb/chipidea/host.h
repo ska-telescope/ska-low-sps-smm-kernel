@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 #ifndef __DRIVERS_USB_CHIPIDEA_HOST_H
 #define __DRIVERS_USB_CHIPIDEA_HOST_H
 
@@ -5,6 +6,7 @@
 
 int ci_hdrc_host_init(struct ci_hdrc *ci);
 void ci_hdrc_host_destroy(struct ci_hdrc *ci);
+void ci_hdrc_host_driver_init(void);
 bool ci_hdrc_host_has_device(struct ci_hdrc *ci);
 
 #else
@@ -15,6 +17,11 @@ static inline int ci_hdrc_host_init(struct ci_hdrc *ci)
 }
 
 static inline void ci_hdrc_host_destroy(struct ci_hdrc *ci)
+{
+
+}
+
+static inline void ci_hdrc_host_driver_init(void)
 {
 
 }

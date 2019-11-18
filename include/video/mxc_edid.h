@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2013 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2009-2015 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -64,10 +64,6 @@ struct mxc_edid_cfg {
 	bool cea_ycbcr444;
 	bool cea_ycbcr422;
 	bool hdmi_cap;
-	bool cea_rgb_range_selectable;
-	u8 cea_scan_mode_ce;
-	u8 cea_scan_mode_it;
-	u8 cea_scan_mode_pt;
 
 	/*VSD*/
 	bool vsd_support_ai;
@@ -94,15 +90,13 @@ struct mxc_edid_cfg {
 	u16 hdmi_3d_struct_all;
 	u32 vsd_max_tmdsclk_rate;
 
-	u8 sample_sizes[4];
-	u8 sample_rates[4];
+	u8 max_channels;
+	u8 sample_sizes;
+	u8 sample_rates;
 	u8 speaker_alloc;
 };
 
-static inline unsigned long mxcPICOS2KHZ(u32 pixclock, u32 vmode) {
-	u32 x = (1000000000UL / (pixclock) * 1000 / ((vmode & FB_VMODE_FRACTIONAL) ? 1001 : 1000));
-	return x + ((1000000000UL % x) > (x / 2) ? 1 : 0);
-}
+extern const struct fb_videomode mxc_cea_mode[64];
 
 int mxc_edid_var_to_vic(struct fb_var_screeninfo *var);
 int mxc_edid_mode_to_vic(const struct fb_videomode *mode);
@@ -110,7 +104,4 @@ int mxc_edid_read(struct i2c_adapter *adp, unsigned short addr,
 	unsigned char *edid, struct mxc_edid_cfg *cfg, struct fb_info *fbi);
 int mxc_edid_parse_ext_blk(unsigned char *edid, struct mxc_edid_cfg *cfg,
 	struct fb_monspecs *specs);
-const struct fb_videomode *mxc_fb_find_nearest_mode(const struct fb_videomode *mode,
-                                                    struct list_head *head, bool relax);
-int mxc_fb_mode_is_equal_res(const struct fb_videomode *mode1, const struct fb_videomode *mode2);
 #endif

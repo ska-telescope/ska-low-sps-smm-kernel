@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
  * DSM-G600 board-setup
  *
@@ -26,7 +27,6 @@
 #include <linux/reboot.h>
 #include <linux/i2c.h>
 #include <linux/i2c-gpio.h>
-#include <linux/gpio.h>
 
 #include <mach/hardware.h>
 
@@ -233,8 +233,7 @@ static int __init dsmg600_gpio_init(void)
 
 	gpio_request(DSMG600_RB_GPIO, "reset button");
 	if (request_irq(gpio_to_irq(DSMG600_RB_GPIO), &dsmg600_reset_handler,
-		IRQF_DISABLED | IRQF_TRIGGER_LOW,
-		"DSM-G600 reset button", NULL) < 0) {
+		IRQF_TRIGGER_LOW, "DSM-G600 reset button", NULL) < 0) {
 
 		printk(KERN_DEBUG "Reset Button IRQ %d not available\n",
 			gpio_to_irq(DSMG600_RB_GPIO));

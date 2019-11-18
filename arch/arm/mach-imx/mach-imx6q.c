@@ -1,6 +1,7 @@
 /*
  * Copyright 2011-2015 Freescale Semiconductor, Inc.
  * Copyright 2011 Linaro Ltd.
+ * Copyright 2017 NXP.
  *
  * The code contained herein is licensed under the GNU General Public
  * License. You may obtain a copy of the GNU General Public License
@@ -10,20 +11,17 @@
  * http://www.gnu.org/copyleft/gpl.html
  */
 
-#include <linux/can/platform/flexcan.h>
 #include <linux/clk.h>
 #include <linux/clkdev.h>
 #include <linux/cpu.h>
 #include <linux/delay.h>
 #include <linux/export.h>
-#include <linux/gpio.h>
 #include <linux/init.h>
 #include <linux/io.h>
 #include <linux/irq.h>
 #include <linux/irqchip.h>
 #include <linux/of.h>
 #include <linux/of_address.h>
-#include <linux/of_gpio.h>
 #include <linux/of_irq.h>
 #include <linux/of_platform.h>
 #include <linux/pm_opp.h>
@@ -35,8 +33,6 @@
 #include <linux/mfd/syscon.h>
 #include <linux/mfd/syscon/imx6q-iomuxc-gpr.h>
 #include <linux/of_net.h>
-#include <linux/fec.h>
-#include <linux/netdevice.h>
 #include <asm/mach/arch.h>
 #include <asm/mach/map.h>
 #include <asm/system_misc.h>
@@ -44,97 +40,6 @@
 #include "common.h"
 #include "cpuidle.h"
 #include "hardware.h"
-
-static struct fec_platform_data fec_pdata;
-static struct flexcan_platform_data flexcan_pdata[2];
-static int flexcan_en_gpio;
-static int flexcan_stby_gpio;
-static int flexcan0_en;
-static int flexcan1_en;
-
-static void imx6q_fec_sleep_enable(int enabled)
-{
-	struct regmap *gpr;
-
-	gpr = syscon_regmap_lookup_by_compatible("fsl,imx6q-iomuxc-gpr");
-	if (!IS_ERR(gpr)) {
-		if (enabled)
-			regmap_update_bits(gpr, IOMUXC_GPR13,
-					   IMX6Q_GPR13_ENET_STOP_REQ,
-					   IMX6Q_GPR13_ENET_STOP_REQ);
-		else
-			regmap_update_bits(gpr, IOMUXC_GPR13,
-					   IMX6Q_GPR13_ENET_STOP_REQ, 0);
-	} else
-		pr_err("failed to find fsl,imx6q-iomux-gpr regmap\n");
-}
-
-static void __init imx6q_enet_plt_init(void)
-{
-	struct device_node *np;
-
-	np = of_find_node_by_path("/soc/aips-bus@02100000/ethernet@02188000");
-	if (np && of_get_property(np, "fsl,magic-packet", NULL))
-		fec_pdata.sleep_mode_enable = imx6q_fec_sleep_enable;
-}
-
-static void mx6q_flexcan_switch(void)
-{
-	if (flexcan0_en || flexcan1_en) {
-		/*
-		 * The transceiver TJA1041A on sabreauto RevE baseboard will
-		 * fail to transit to Normal state if EN/STBY is high by default
-		 * after board power up. So we set the EN/STBY initial state to low
-		 * first then to high to guarantee the state transition successfully.
-		 */
-		gpio_set_value_cansleep(flexcan_en_gpio, 0);
-		gpio_set_value_cansleep(flexcan_stby_gpio, 0);
-
-		gpio_set_value_cansleep(flexcan_en_gpio, 1);
-		gpio_set_value_cansleep(flexcan_stby_gpio, 1);
-	} else {
-		/*
-		 * avoid to disable CAN xcvr if any of the CAN interfaces
-		 * are down. XCRV will be disabled only if both CAN2
-		 * interfaces are DOWN.
-		*/
-		gpio_set_value_cansleep(flexcan_en_gpio, 0);
-		gpio_set_value_cansleep(flexcan_stby_gpio, 0);
-	}
-}
-
-static void imx6q_flexcan0_switch_auto(int enable)
-{
-	flexcan0_en = enable;
-	mx6q_flexcan_switch();
-}
-
-static void imx6q_flexcan1_switch_auto(int enable)
-{
-	flexcan1_en = enable;
-	mx6q_flexcan_switch();
-}
-
-static int __init imx6q_flexcan_fixup_auto(void)
-{
-	struct device_node *np;
-
-	np = of_find_node_by_path("/soc/aips-bus@02000000/can@02090000");
-	if (!np)
-		return -ENODEV;
-
-	flexcan_en_gpio = of_get_named_gpio(np, "trx-en-gpio", 0);
-	flexcan_stby_gpio = of_get_named_gpio(np, "trx-stby-gpio", 0);
-	if (gpio_is_valid(flexcan_en_gpio) && gpio_is_valid(flexcan_stby_gpio) &&
-		!gpio_request_one(flexcan_en_gpio, GPIOF_DIR_OUT, "flexcan-trx-en") &&
-		!gpio_request_one(flexcan_stby_gpio, GPIOF_DIR_OUT, "flexcan-trx-stby")) {
-		/* flexcan 0 & 1 are using the same GPIOs for transceiver */
-		flexcan_pdata[0].transceiver_switch = imx6q_flexcan0_switch_auto;
-		flexcan_pdata[1].transceiver_switch = imx6q_flexcan1_switch_auto;
-	}
-
-	return 0;
-}
 
 /* For imx6q sabrelite board: set KSZ9021RN RGMII pad skew */
 static int ksz9021rn_phy_fixup(struct phy_device *phydev)
@@ -209,6 +114,10 @@ static int ar8031_phy_fixup(struct phy_device *dev)
 {
 	u16 val;
 
+	/* Set RGMII IO voltage to 1.8V */
+	phy_write(dev, 0x1d, 0x1f);
+	phy_write(dev, 0x1e, 0x8);
+
 	/* disable phy AR8031 SmartEEE function. */
 	phy_write(dev, 0xd, 0x3);
 	phy_write(dev, 0xe, 0x805d);
@@ -278,7 +187,7 @@ static void __init imx6q_enet_phy_init(void)
 				ksz9021rn_phy_fixup);
 		phy_register_fixup_for_uid(PHY_ID_KSZ9031, MICREL_PHY_ID_MASK,
 				ksz9031rn_phy_fixup);
-		phy_register_fixup_for_uid(PHY_ID_AR8031, 0xffffffff,
+		phy_register_fixup_for_uid(PHY_ID_AR8031, 0xffffffef,
 				ar8031_phy_fixup);
 		phy_register_fixup_for_uid(PHY_ID_AR8035, 0xffffffef,
 				ar8035_phy_fixup);
@@ -314,7 +223,7 @@ static void __init imx6q_1588_init(void)
 				IMX6Q_GPR1_ENET_CLK_SEL_MASK,
 				IMX6Q_GPR1_ENET_CLK_SEL_ANATOP);
 	else
-		pr_err("failed to find fsl,imx6q-iomux-gpr regmap\n");
+		pr_err("failed to find fsl,imx6q-iomuxc-gpr regmap\n");
 
 	clk_put(ptp_clk);
 put_node:
@@ -338,13 +247,10 @@ static void __init imx6q_csi_mux_init(void)
 
 	gpr = syscon_regmap_lookup_by_compatible("fsl,imx6q-iomuxc-gpr");
 	if (!IS_ERR(gpr)) {
-		if (of_machine_is_compatible("sanitas,imx6q-inventami-emmc"))
-			regmap_update_bits(gpr, IOMUXC_GPR1, 1 << 19, 1 << 19);
-		else if (of_machine_is_compatible("sanitas,imx6d-inventami-emmc"))
-			regmap_update_bits(gpr, IOMUXC_GPR1, 1 << 19, 1 << 19);
-		else if (of_machine_is_compatible("fsl,imx6dl-sabresd") ||
-			of_machine_is_compatible("fsl,imx6q-sabresd") ||
-			of_machine_is_compatible("fsl,imx6q-sabreauto"))
+		if (of_machine_is_compatible("fsl,imx6q-sabresd") ||
+			of_machine_is_compatible("fsl,imx6q-sabreauto") ||
+			of_machine_is_compatible("fsl,imx6qp-sabresd") ||
+			of_machine_is_compatible("fsl,imx6qp-sabreauto"))
 			regmap_update_bits(gpr, IOMUXC_GPR1, 1 << 19, 1 << 19);
 		else if (of_machine_is_compatible("fsl,imx6dl-sabresd") ||
 			 of_machine_is_compatible("fsl,imx6dl-sabreauto"))
@@ -355,120 +261,81 @@ static void __init imx6q_csi_mux_init(void)
 	}
 }
 
-#define OCOTP_MACn(n)	(0x00000620 + (n) * 0x10)
-void __init imx6_enet_mac_init(const char *compatible)
+static void __init imx6q_axi_init(void)
 {
-	struct device_node *ocotp_np, *enet_np, *from = NULL;
-	void __iomem *base;
-	struct property *newmac;
-	u32 macaddr_low;
-	u32 macaddr_high = 0;
-	u32 macaddr1_high = 0;
-	u8 *macaddr;
-	int i;
+	struct regmap *gpr;
+	unsigned int mask;
 
-	for (i = 0; i < 2; i++) {
-		enet_np = of_find_compatible_node(from, NULL, compatible);
-		if (!enet_np)
-			return;
+	gpr = syscon_regmap_lookup_by_compatible("fsl,imx6q-iomuxc-gpr");
+	if (!IS_ERR(gpr)) {
+		/*
+		 * Enable the cacheable attribute of VPU and IPU
+		 * AXI transactions.
+		 */
+		mask = IMX6Q_GPR4_VPU_WR_CACHE_SEL |
+			IMX6Q_GPR4_VPU_RD_CACHE_SEL |
+			IMX6Q_GPR4_VPU_P_WR_CACHE_VAL |
+			IMX6Q_GPR4_VPU_P_RD_CACHE_VAL_MASK |
+			IMX6Q_GPR4_IPU_WR_CACHE_CTL |
+			IMX6Q_GPR4_IPU_RD_CACHE_CTL;
+		regmap_update_bits(gpr, IOMUXC_GPR4, mask, mask);
 
-		from = enet_np;
-
-		if (of_get_mac_address(enet_np))
-			goto put_enet_node;
-
-		ocotp_np = of_find_compatible_node(NULL, NULL, "fsl,imx6q-ocotp");
-		if (!ocotp_np) {
-			pr_warn("failed to find ocotp node\n");
-			goto put_enet_node;
-		}
-
-		base = of_iomap(ocotp_np, 0);
-		if (!base) {
-			pr_warn("failed to map ocotp\n");
-			goto put_ocotp_node;
-		}
-
-		macaddr_low = readl_relaxed(base + OCOTP_MACn(1));
-		if (i)
-			macaddr1_high = readl_relaxed(base + OCOTP_MACn(2));
-		else
-			macaddr_high = readl_relaxed(base + OCOTP_MACn(0));
-
-		newmac = kzalloc(sizeof(*newmac) + 6, GFP_KERNEL);
-		if (!newmac)
-			goto put_ocotp_node;
-
-		newmac->value = newmac + 1;
-		newmac->length = 6;
-		newmac->name = kstrdup("local-mac-address", GFP_KERNEL);
-		if (!newmac->name) {
-			kfree(newmac);
-			goto put_ocotp_node;
-		}
-
-		macaddr = newmac->value;
-		if (i) {
-			macaddr[5] = (macaddr_low >> 16) & 0xff;
-			macaddr[4] = (macaddr_low >> 24) & 0xff;
-			macaddr[3] = macaddr1_high & 0xff;
-			macaddr[2] = (macaddr1_high >> 8) & 0xff;
-			macaddr[1] = (macaddr1_high >> 16) & 0xff;
-			macaddr[0] = (macaddr1_high >> 24) & 0xff;
-		} else {
-			macaddr[5] = macaddr_high & 0xff;
-			macaddr[4] = (macaddr_high >> 8) & 0xff;
-			macaddr[3] = (macaddr_high >> 16) & 0xff;
-			macaddr[2] = (macaddr_high >> 24) & 0xff;
-			macaddr[1] = macaddr_low & 0xff;
-			macaddr[0] = (macaddr_low >> 8) & 0xff;
-		}
-
-		of_update_property(enet_np, newmac);
-
-put_ocotp_node:
-	of_node_put(ocotp_np);
-put_enet_node:
-	of_node_put(enet_np);
+		/* Increase IPU read QoS priority */
+		regmap_update_bits(gpr, IOMUXC_GPR6,
+				IMX6Q_GPR6_IPU1_ID00_RD_QOS_MASK |
+				IMX6Q_GPR6_IPU1_ID01_RD_QOS_MASK,
+				(0xf << 16) | (0x7 << 20));
+		regmap_update_bits(gpr, IOMUXC_GPR7,
+				IMX6Q_GPR7_IPU2_ID00_RD_QOS_MASK |
+				IMX6Q_GPR7_IPU2_ID01_RD_QOS_MASK,
+				(0xf << 16) | (0x7 << 20));
+	} else {
+		pr_warn("failed to find fsl,imx6q-iomuxc-gpr regmap\n");
 	}
+}
+
+static void __init imx6q_enet_clk_sel(void)
+{
+	struct regmap *gpr;
+
+	gpr = syscon_regmap_lookup_by_compatible("fsl,imx6q-iomuxc-gpr");
+	if (!IS_ERR(gpr))
+		regmap_update_bits(gpr, IOMUXC_GPR5,
+				   IMX6Q_GPR5_ENET_TX_CLK_SEL, IMX6Q_GPR5_ENET_TX_CLK_SEL);
+	else
+		pr_err("failed to find fsl,imx6q-iomux-gpr regmap\n");
 }
 
 static inline void imx6q_enet_init(void)
 {
-	imx6_enet_mac_init("fsl,imx6q-fec");
+	imx6_enet_mac_init("fsl,imx6q-fec", "fsl,imx6q-ocotp");
 	imx6q_enet_phy_init();
 	imx6q_1588_init();
-	imx6q_enet_plt_init();
+	if (cpu_is_imx6q() && imx_get_soc_revision() >= IMX_CHIP_REVISION_2_0)
+		imx6q_enet_clk_sel();
 }
-
-/* Add auxdata to pass platform data */
-static const struct of_dev_auxdata imx6q_auxdata_lookup[] __initconst = {
-	OF_DEV_AUXDATA("fsl,imx6q-flexcan", 0x02090000, NULL, &flexcan_pdata[0]),
-	OF_DEV_AUXDATA("fsl,imx6q-flexcan", 0x02094000, NULL, &flexcan_pdata[1]),
-	OF_DEV_AUXDATA("fsl,imx6q-fec", 0x02188000, NULL, &fec_pdata),
-	{ /* sentinel */ }
-};
 
 static void __init imx6q_init_machine(void)
 {
 	struct device *parent;
 
-	imx_print_silicon_rev(cpu_is_imx6dl() ? "i.MX6DL" : "i.MX6Q",
-			      imx_get_soc_revision());
-
-	mxc_arch_reset_init_dt();
+	if (cpu_is_imx6q() && imx_get_soc_revision() >= IMX_CHIP_REVISION_2_0)
+		imx_print_silicon_rev("i.MX6QP", IMX_CHIP_REVISION_1_0);
+	else
+		imx_print_silicon_rev(cpu_is_imx6dl() ? "i.MX6DL" : "i.MX6Q",
+				imx_get_soc_revision());
 
 	parent = imx_soc_device_init();
 	if (parent == NULL)
 		pr_warn("failed to initialize soc device\n");
 
-	of_platform_populate(NULL, of_default_bus_match_table,
-					imx6q_auxdata_lookup, parent);
+	of_platform_default_populate(NULL, NULL, parent);
 
 	imx6q_enet_init();
 	imx_anatop_init();
 	imx6q_csi_mux_init();
 	cpu_is_imx6q() ?  imx6q_pm_init() : imx6dl_pm_init();
+	imx6q_axi_init();
 }
 
 #define OCOTP_CFG3			0x440
@@ -507,7 +374,7 @@ static void __init imx6q_opp_check_speed_grading(struct device *cpu_dev)
 	val >>= OCOTP_CFG3_SPEED_SHIFT;
 	val &= 0x3;
 
-	if (val != OCOTP_CFG3_SPEED_1P2GHZ)
+	if ((val != OCOTP_CFG3_SPEED_1P2GHZ) && cpu_is_imx6q())
 		if (dev_pm_opp_disable(cpu_dev, 1200000000))
 			pr_warn("failed to disable 1.2 GHz OPP\n");
 	if (val < OCOTP_CFG3_SPEED_996MHZ)
@@ -518,6 +385,7 @@ static void __init imx6q_opp_check_speed_grading(struct device *cpu_dev)
 			if (dev_pm_opp_disable(cpu_dev, 852000000))
 				pr_warn("failed to disable 852 MHz OPP\n");
 	}
+	iounmap(base);
 
 	if (IS_ENABLED(CONFIG_MX6_VPU_352M)) {
 		if (dev_pm_opp_disable(cpu_dev, 396000000))
@@ -544,7 +412,7 @@ static void __init imx6q_opp_init(void)
 		return;
 	}
 
-	if (of_init_opp_table(cpu_dev)) {
+	if (dev_pm_opp_of_add_table(cpu_dev)) {
 		pr_warn("failed to init OPP table\n");
 		goto put_node;
 	}
@@ -574,10 +442,6 @@ static void __init imx6q_init_late(void)
 		imx6q_opp_init();
 		platform_device_register(&imx6q_cpufreq_pdev);
 	}
-
-	if (of_machine_is_compatible("fsl,imx6q-sabreauto")
-		|| of_machine_is_compatible("fsl,imx6dl-sabreauto"))
-		imx6q_flexcan_fixup_auto();
 }
 
 static void __init imx6q_map_io(void)
@@ -585,36 +449,33 @@ static void __init imx6q_map_io(void)
 	debug_ll_io_init();
 	imx_scu_map_io();
 	imx6_pm_map_io();
-	imx6_busfreq_map_io();
+	imx_busfreq_map_io();
 }
 
 static void __init imx6q_init_irq(void)
 {
+	imx_gpc_check_dt();
 	imx_init_revision_from_anatop();
 	imx_init_l2cache();
 	imx_src_init();
-	imx_gpc_init();
 	irqchip_init();
+	imx6_pm_ccm_init("fsl,imx6q-ccm");
 }
 
-static const char *imx6q_dt_compat[] __initdata = {
+static const char * const imx6q_dt_compat[] __initconst = {
 	"fsl,imx6dl",
 	"fsl,imx6q",
+	"fsl,imx6qp",
 	NULL,
 };
 
 DT_MACHINE_START(IMX6Q, "Freescale i.MX6 Quad/DualLite (Device Tree)")
-	/*
-	 * i.MX6Q/DL maps system memory at 0x10000000 (offset 256MiB), and
-	 * GPU has a limit on physical address that it accesses, which must
-	 * be below 2GiB.
-	 */
-	.dma_zone_size	= (SZ_2G - SZ_256M),
+	.l2c_aux_val 	= 0,
+	.l2c_aux_mask	= ~0,
 	.smp		= smp_ops(imx_smp_ops),
 	.map_io		= imx6q_map_io,
 	.init_irq	= imx6q_init_irq,
 	.init_machine	= imx6q_init_machine,
 	.init_late      = imx6q_init_late,
 	.dt_compat	= imx6q_dt_compat,
-	.restart	= mxc_restart,
 MACHINE_END

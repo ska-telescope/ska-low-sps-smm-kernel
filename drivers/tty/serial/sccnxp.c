@@ -474,9 +474,7 @@ static void sccnxp_timer(unsigned long data)
 	sccnxp_handle_events(s);
 	spin_unlock_irqrestore(&s->lock, flags);
 
-	if (!timer_pending(&s->timer))
-		mod_timer(&s->timer, jiffies +
-			  usecs_to_jiffies(s->pdata.poll_time_us));
+	mod_timer(&s->timer, jiffies + usecs_to_jiffies(s->pdata.poll_time_us));
 }
 
 static irqreturn_t sccnxp_ist(int irq, void *dev_id)
@@ -533,11 +531,6 @@ static unsigned int sccnxp_tx_empty(struct uart_port *port)
 	spin_unlock_irqrestore(&s->lock, flags);
 
 	return (val & SR_TXEMT) ? TIOCSER_TEMT : 0;
-}
-
-static void sccnxp_enable_ms(struct uart_port *port)
-{
-	/* Do nothing */
 }
 
 static void sccnxp_set_mctrl(struct uart_port *port, unsigned int mctrl)
@@ -674,6 +667,8 @@ static void sccnxp_set_termios(struct uart_port *port,
 	port->ignore_status_mask = 0;
 	if (termios->c_iflag & IGNBRK)
 		port->ignore_status_mask |= SR_BRK;
+	if (termios->c_iflag & IGNPAR)
+		port->ignore_status_mask |= SR_PE;
 	if (!(termios->c_cflag & CREAD))
 		port->ignore_status_mask |= SR_PE | SR_OVR | SR_FE | SR_BRK;
 
@@ -790,7 +785,6 @@ static const struct uart_ops sccnxp_ops = {
 	.stop_tx	= sccnxp_stop_tx,
 	.start_tx	= sccnxp_start_tx,
 	.stop_rx	= sccnxp_stop_rx,
-	.enable_ms	= sccnxp_enable_ms,
 	.break_ctl	= sccnxp_break_ctl,
 	.startup	= sccnxp_startup,
 	.shutdown	= sccnxp_shutdown,
@@ -890,14 +884,28 @@ static int sccnxp_probe(struct platform_device *pdev)
 
 	clk = devm_clk_get(&pdev->dev, NULL);
 	if (IS_ERR(clk)) {
-		if (PTR_ERR(clk) == -EPROBE_DEFER) {
-			ret = -EPROBE_DEFER;
+		ret = PTR_ERR(clk);
+		if (ret == -EPROBE_DEFER)
 			goto err_out;
-		}
+		uartclk = 0;
+	} else {
+		ret = clk_prepare_enable(clk);
+		if (ret)
+			goto err_out;
+
+		ret = devm_add_action_or_reset(&pdev->dev,
+				(void(*)(void *))clk_disable_unprepare,
+				clk);
+		if (ret)
+			goto err_out;
+
+		uartclk = clk_get_rate(clk);
+	}
+
+	if (!uartclk) {
 		dev_notice(&pdev->dev, "Using default clock frequency\n");
 		uartclk = s->chip->freq_std;
-	} else
-		uartclk = clk_get_rate(clk);
+	}
 
 	/* Check input frequency */
 	if ((uartclk < s->chip->freq_min) || (uartclk > s->chip->freq_max)) {
@@ -989,7 +997,7 @@ static int sccnxp_probe(struct platform_device *pdev)
 	uart_unregister_driver(&s->uart);
 err_out:
 	if (!IS_ERR(s->regulator))
-		return regulator_disable(s->regulator);
+		regulator_disable(s->regulator);
 
 	return ret;
 }
@@ -1018,7 +1026,6 @@ static int sccnxp_remove(struct platform_device *pdev)
 static struct platform_driver sccnxp_uart_driver = {
 	.driver = {
 		.name	= SCCNXP_NAME,
-		.owner	= THIS_MODULE,
 	},
 	.probe		= sccnxp_probe,
 	.remove		= sccnxp_remove,

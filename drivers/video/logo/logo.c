@@ -34,13 +34,13 @@ static int __init fb_logo_late_init(void)
 	return 0;
 }
 
-late_initcall(fb_logo_late_init);
+late_initcall_sync(fb_logo_late_init);
 
-/* logo's are marked __initdata. Use __init_refok to tell
+/* logo's are marked __initdata. Use __ref to tell
  * modpost that it is intended that this function uses data
  * marked __initdata.
  */
-const struct linux_logo * __init_refok fb_find_logo(int depth)
+const struct linux_logo * __ref fb_find_logo(int depth)
 {
 	const struct linux_logo *logo = NULL;
 
@@ -96,7 +96,7 @@ const struct linux_logo * __init_refok fb_find_logo(int depth)
 		logo = &logo_parisc_clut224;
 #endif
 #ifdef CONFIG_LOGO_SGI_CLUT224
-		/* SGI Linux logo on MIPS/MIPS64 and VISWS */
+		/* SGI Linux logo on MIPS/MIPS64 */
 		logo = &logo_sgi_clut224;
 #endif
 #ifdef CONFIG_LOGO_SUN_CLUT224

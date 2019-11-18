@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 #ifndef _BCACHE_JOURNAL_H
 #define _BCACHE_JOURNAL_H
 
@@ -95,6 +96,7 @@ struct journal_write {
 
 	struct cache_set	*c;
 	struct closure_waitlist	wait;
+	bool			dirty;
 	bool			need_write;
 };
 

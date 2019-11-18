@@ -74,26 +74,28 @@ static void do_z2_request(struct request_queue *q)
 	while (req) {
 		unsigned long start = blk_rq_pos(req) << 9;
 		unsigned long len  = blk_rq_cur_bytes(req);
-		int err = 0;
+		blk_status_t err = BLK_STS_OK;
 
 		if (start + len > z2ram_size) {
 			pr_err(DEVICE_NAME ": bad access: block=%llu, "
 			       "count=%u\n",
 			       (unsigned long long)blk_rq_pos(req),
 			       blk_rq_cur_sectors(req));
-			err = -EIO;
+			err = BLK_STS_IOERR;
 			goto done;
 		}
 		while (len) {
 			unsigned long addr = start & Z2RAM_CHUNKMASK;
 			unsigned long size = Z2RAM_CHUNKSIZE - addr;
+			void *buffer = bio_data(req->bio);
+
 			if (len < size)
 				size = len;
 			addr += z2ram_map[ start >> Z2RAM_CHUNKSHIFT ];
 			if (rq_data_dir(req) == READ)
-				memcpy(req->buffer, (char *)addr, size);
+				memcpy(buffer, (char *)addr, size);
 			else
-				memcpy((char *)addr, req->buffer, size);
+				memcpy((char *)addr, buffer, size);
 			start += size;
 			len -= size;
 		}

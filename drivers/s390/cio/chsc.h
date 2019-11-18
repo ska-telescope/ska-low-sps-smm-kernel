@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 #ifndef S390_CHSC_H
 #define S390_CHSC_H
 
@@ -19,17 +20,6 @@ struct cmg_chars {
 #define NR_MEASUREMENT_ENTRIES 8
 struct cmg_entry {
 	u32 values[NR_MEASUREMENT_ENTRIES];
-} __attribute__ ((packed));
-
-struct channel_path_desc {
-	u8 flags;
-	u8 lsn;
-	u8 desc;
-	u8 chpid;
-	u8 swla;
-	u8 zeroes;
-	u8 chla;
-	u8 chpp;
 } __attribute__ ((packed));
 
 struct channel_path_desc_fmt1 {
@@ -123,9 +113,24 @@ struct chsc_scpd {
 	u32 last_chpid:8;
 	u32 zeroes1;
 	struct chsc_header response;
-	u8 data[PAGE_SIZE - 20];
-} __attribute__ ((packed));
+	u32:32;
+	u8 data[0];
+} __packed;
 
+struct chsc_sda_area {
+	struct chsc_header request;
+	u8 :4;
+	u8 format:4;
+	u8 :8;
+	u16 operation_code;
+	u32 :32;
+	u32 :32;
+	u32 operation_data_area[252];
+	struct chsc_header response;
+	u32 :4;
+	u32 format2:4;
+	u32 :24;
+} __packed __aligned(PAGE_SIZE);
 
 extern int chsc_get_ssd_info(struct subchannel_id schid,
 			     struct chsc_ssd_info *ssd);
@@ -133,6 +138,7 @@ extern int chsc_determine_css_characteristics(void);
 extern int chsc_init(void);
 extern void chsc_init_cleanup(void);
 
+int __chsc_enable_facility(struct chsc_sda_area *sda_area, int operation_code);
 extern int chsc_enable_facility(int);
 struct channel_subsystem;
 extern int chsc_secm(struct channel_subsystem *, int);
@@ -236,6 +242,8 @@ int chsc_pnso_brinfo(struct subchannel_id schid,
 		struct chsc_pnso_area *brinfo_area,
 		struct chsc_brinfo_resume_token resume_token,
 		int cnc);
+
+int __init chsc_get_cssid(int idx);
 
 #ifdef CONFIG_SCM_BUS
 int scm_update_information(void);

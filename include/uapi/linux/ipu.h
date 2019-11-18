@@ -1,21 +1,14 @@
 /*
- * Copyright (C) 2013 Freescale Semiconductor, Inc. All Rights Reserved
+ * Copyright (C) 2013-2015 Freescale Semiconductor, Inc. All Rights Reserved
  */
 
 /*
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
+ * The code contained herein is licensed under the GNU General Public
+ * License. You may obtain a copy of the GNU General Public License
+ * Version 2 or later at the following locations:
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ * http://www.opensource.org/licenses/gpl-license.html
+ * http://www.gnu.org/copyleft/gpl.html
  */
 
 /*!
@@ -96,12 +89,23 @@ typedef enum {
  */
 
 /*! @{ */
+/*! @name GPU Tile Formats */
+/*! @{ */
+#define IPU_PIX_FMT_GPU32_SB_ST  fourcc('5', 'P', '4', 'S') /*!< 32bit split buf 4x4 standard */
+#define IPU_PIX_FMT_GPU32_SB_SRT fourcc('5', 'P', '4', 'R') /*!< 32bit split buf 4x4 super */
+#define IPU_PIX_FMT_GPU32_ST     fourcc('5', 'I', '4', 'S') /*!< 32bit single buf 4x4 standard */
+#define IPU_PIX_FMT_GPU32_SRT    fourcc('5', 'I', '4', 'R') /*!< 32bit single buf 4x4 super */
+#define IPU_PIX_FMT_GPU16_SB_ST  fourcc('4', 'P', '8', 'S') /*!< 16bit split buf 8x4 standard */
+#define IPU_PIX_FMT_GPU16_SB_SRT fourcc('4', 'P', '8', 'R') /*!< 16bit split buf 8x4 super */
+#define IPU_PIX_FMT_GPU16_ST     fourcc('4', 'I', '8', 'S') /*!< 16bit single buf 8x4 standard */
+#define IPU_PIX_FMT_GPU16_SRT    fourcc('4', 'I', '8', 'R') /*!< 16bit single buf 8x4 super */
+
+/*! @{ */
 /*! @name Generic or Raw Data Formats */
 /*! @{ */
 #define IPU_PIX_FMT_GENERIC fourcc('I', 'P', 'U', '0')	/*!< IPU Generic Data */
 #define IPU_PIX_FMT_GENERIC_32 fourcc('I', 'P', 'U', '1')	/*!< IPU Generic Data */
 #define IPU_PIX_FMT_GENERIC_16 fourcc('I', 'P', 'U', '2')	/*!< IPU Generic Data */
-#define IPU_PIX_FMT_Y16     fourcc('Y', '1', '6', ' ')	/*!< 16 Grayscale */
 #define IPU_PIX_FMT_LVDS666 fourcc('L', 'V', 'D', '6')	/*!< IPU Generic Data */
 #define IPU_PIX_FMT_LVDS888 fourcc('L', 'V', 'D', '8')	/*!< IPU Generic Data */
 /*! @} */
@@ -110,6 +114,8 @@ typedef enum {
 #define IPU_PIX_FMT_RGB332  fourcc('R', 'G', 'B', '1')	/*!<  8  RGB-3-3-2    */
 #define IPU_PIX_FMT_RGB555  fourcc('R', 'G', 'B', 'O')	/*!< 16  RGB-5-5-5    */
 #define IPU_PIX_FMT_RGB565  fourcc('R', 'G', 'B', 'P')	/*!< 1 6  RGB-5-6-5   */
+#define IPU_PIX_FMT_BGRA4444 fourcc('4', '4', '4', '4')	/*!< 16  RGBA-4-4-4-4 */
+#define IPU_PIX_FMT_BGRA5551 fourcc('5', '5', '5', '1')	/*!< 16  RGBA-5-5-5-1 */
 #define IPU_PIX_FMT_RGB666  fourcc('R', 'G', 'B', '6')	/*!< 18  RGB-6-6-6    */
 #define IPU_PIX_FMT_BGR666  fourcc('B', 'G', 'R', '6')	/*!< 18  BGR-6-6-6    */
 #define IPU_PIX_FMT_BGR24   fourcc('B', 'G', 'R', '3')	/*!< 24  BGR-8-8-8    */
@@ -130,8 +136,12 @@ typedef enum {
 #define IPU_PIX_FMT_Y41P    fourcc('Y', '4', '1', 'P')	/*!< 12 YUV 4:1:1 */
 #define IPU_PIX_FMT_YUV444  fourcc('Y', '4', '4', '4')	/*!< 24 YUV 4:4:4 */
 #define IPU_PIX_FMT_VYU444  fourcc('V', '4', '4', '4')	/*!< 24 VYU 4:4:4 */
+#define IPU_PIX_FMT_AYUV    fourcc('A', 'Y', 'U', 'V')	/*!< 32 AYUV 4:4:4:4 */
 /* two planes -- one Y, one Cb + Cr interleaved  */
 #define IPU_PIX_FMT_NV12    fourcc('N', 'V', '1', '2') /* 12  Y/CbCr 4:2:0  */
+#define PRE_PIX_FMT_NV21    fourcc('N', 'V', '2', '1') /* 12  Y/CbCr 4:2:0  */
+#define IPU_PIX_FMT_NV16    fourcc('N', 'V', '1', '6') /* 16  Y/CbCr 4:2:2  */
+#define PRE_PIX_FMT_NV61    fourcc('N', 'V', '6', '1') /* 16  Y/CbCr 4:2:2  */
 /* two planes -- 12  tiled Y/CbCr 4:2:0  */
 #define IPU_PIX_FMT_TILED_NV12    fourcc('T', 'N', 'V', 'P')
 #define IPU_PIX_FMT_TILED_NV12F   fourcc('T', 'N', 'V', 'F')

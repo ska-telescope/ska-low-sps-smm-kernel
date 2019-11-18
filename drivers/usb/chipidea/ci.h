@@ -18,6 +18,8 @@
 #include <linux/usb.h>
 #include <linux/usb/gadget.h>
 #include <linux/usb/otg-fsm.h>
+#include <linux/usb/otg.h>
+#include <linux/ulpi/interface.h>
 
 /******************************************************************************
  * DEFINE
@@ -50,8 +52,10 @@ enum ci_hw_regs {
 	OP_USBINTR,
 	OP_DEVICEADDR,
 	OP_ENDPTLISTADDR,
-	OP_PORTSC,
+	OP_TTCTRL,
 	OP_BURSTSIZE,
+	OP_ULPI_VIEWPORT,
+	OP_PORTSC,
 	OP_DEVLC,
 	OP_OTGSC,
 	OP_USBMODE,
@@ -167,14 +171,17 @@ struct hw_bank {
  * @role: current role
  * @is_otg: if the device is otg-capable
  * @fsm: otg finite state machine
- * @fsm_timer: pointer to timer list of otg fsm
- * @hnp_polling_work: work for hnp polling
+ * @otg_fsm_hrtimer: hrtimer for otg fsm timers
+ * @hr_timeouts: time out list for active otg fsm timers
+ * @enabled_otg_timer_bits: bits of enabled otg timers
+ * @next_otg_timer: next nearest enabled timer to be expired
  * @work: work for role changing
  * @wq: workqueue thread
  * @qh_pool: allocation pool for queue heads
  * @td_pool: allocation pool for transfer descriptors
  * @gadget: device side representation for peripheral controller
  * @driver: gadget driver
+ * @resume_state: save the state of gadget suspend from
  * @hw_ep_max: total number of endpoints supported by hardware
  * @ci_hw_ep: array of endpoints
  * @ep0_dir: ep0 direction
@@ -188,6 +195,8 @@ struct hw_bank {
  * @test_mode: the selected test mode
  * @platdata: platform specific information supplied by parent device
  * @vbus_active: is VBUS active
+ * @ulpi: pointer to ULPI device, if any
+ * @ulpi_ops: ULPI read/write ops for this device
  * @phy: pointer to PHY, if any
  * @usb_phy: pointer to USB PHY, if any and if using the USB PHY framework
  * @hcd: pointer to usb_hcd for ehci host driver
@@ -201,6 +210,9 @@ struct hw_bank {
  * @in_lpm: if the core in low power mode
  * @wakeup_int: if wakeup interrupt occur
  * @rev: The revision number for controller
+ * @mutex: protect code from concorrent running
+ * @power_lost_work: work item when controller power is lost
+ * @power_lost_wq: work queue for controller power is lost
  */
 struct ci_hdrc {
 	struct device			*dev;
@@ -212,9 +224,10 @@ struct ci_hdrc {
 	bool				is_otg;
 	struct usb_otg			otg;
 	struct otg_fsm			fsm;
-	struct ci_otg_fsm_timer_list	*fsm_timer;
-	struct timer_list		hnp_polling_timer;
-	struct work_struct		hnp_polling_work;
+	struct hrtimer			otg_fsm_hrtimer;
+	ktime_t				hr_timeouts[NUM_OTG_FSM_TIMERS];
+	unsigned			enabled_otg_timer_bits;
+	enum otg_fsm_timer		next_otg_timer;
 	struct work_struct		work;
 	struct workqueue_struct		*wq;
 
@@ -223,6 +236,7 @@ struct ci_hdrc {
 
 	struct usb_gadget		gadget;
 	struct usb_gadget_driver	*driver;
+	enum usb_device_state		resume_state;
 	unsigned			hw_ep_max;
 	struct ci_hw_ep			ci_hw_ep[ENDPT_MAX];
 	u32				ep0_dir;
@@ -237,6 +251,10 @@ struct ci_hdrc {
 
 	struct ci_hdrc_platform_data	*platdata;
 	int				vbus_active;
+#ifdef CONFIG_USB_CHIPIDEA_ULPI
+	struct ulpi			*ulpi;
+	struct ulpi_ops 		ulpi_ops;
+#endif
 	struct phy			*phy;
 	/* old usb_phy interface */
 	struct usb_phy			*usb_phy;
@@ -262,6 +280,8 @@ struct ci_hdrc {
 	u32				pm_portsc;
 	u32				pm_usbmode;
 	struct work_struct		power_lost_work;
+	struct workqueue_struct		*power_lost_wq;
+	struct mutex			mutex;
 };
 
 static inline struct ci_role_driver *ci_role(struct ci_hdrc *ci)
@@ -281,9 +301,21 @@ static inline int ci_role_start(struct ci_hdrc *ci, enum ci_role role)
 		return -ENXIO;
 
 	ret = ci->roles[role]->start(ci);
-	if (!ret)
-		ci->role = role;
-	return ret;
+	if (ret)
+		return ret;
+
+	ci->role = role;
+
+	if (ci->usb_phy) {
+		if (role == CI_ROLE_HOST)
+			usb_phy_set_mode(ci->usb_phy,
+					USB_MODE_HOST);
+		else
+			usb_phy_set_mode(ci->usb_phy,
+					USB_MODE_DEVICE);
+	}
+
+	return 0;
 }
 
 static inline void ci_role_stop(struct ci_hdrc *ci)
@@ -296,6 +328,9 @@ static inline void ci_role_stop(struct ci_hdrc *ci)
 	ci->role = CI_ROLE_END;
 
 	ci->roles[role]->stop(ci);
+
+	if (ci->usb_phy)
+		usb_phy_set_mode(ci->usb_phy, USB_MODE_NONE);
 }
 
 /**
@@ -422,12 +457,25 @@ static inline u32 hw_test_and_write(struct ci_hdrc *ci, enum ci_hw_regs reg,
 static inline bool ci_otg_is_fsm_mode(struct ci_hdrc *ci)
 {
 #ifdef CONFIG_USB_OTG_FSM
+	struct usb_otg_caps *otg_caps = &ci->platdata->ci_otg_caps;
+
 	return ci->is_otg && ci->roles[CI_ROLE_HOST] &&
-					ci->roles[CI_ROLE_GADGET];
+		ci->roles[CI_ROLE_GADGET] && (otg_caps->srp_support ||
+		otg_caps->hnp_support || otg_caps->adp_support);
 #else
 	return false;
 #endif
 }
+
+#if IS_ENABLED(CONFIG_USB_CHIPIDEA_ULPI)
+int ci_ulpi_init(struct ci_hdrc *ci);
+void ci_ulpi_exit(struct ci_hdrc *ci);
+int ci_ulpi_resume(struct ci_hdrc *ci);
+#else
+static inline int ci_ulpi_init(struct ci_hdrc *ci) { return 0; }
+static inline void ci_ulpi_exit(struct ci_hdrc *ci) { }
+static inline int ci_ulpi_resume(struct ci_hdrc *ci) { return 0; }
+#endif
 
 u32 hw_read_intr_enable(struct ci_hdrc *ci);
 
@@ -439,10 +487,14 @@ int hw_port_test_set(struct ci_hdrc *ci, u8 mode);
 
 u8 hw_port_test_get(struct ci_hdrc *ci);
 
-int hw_wait_reg(struct ci_hdrc *ci, enum ci_hw_regs reg, u32 mask,
-				u32 value, unsigned int timeout_ms);
+void hw_phymode_configure(struct ci_hdrc *ci);
 
+void ci_platform_configure(struct ci_hdrc *ci);
 int hw_controller_reset(struct ci_hdrc *ci);
-void ci_hdrc_ahb_config(struct ci_hdrc *ci);
 
+int dbg_create_files(struct ci_hdrc *ci);
+
+void dbg_remove_files(struct ci_hdrc *ci);
+
+void ci_hdrc_enter_lpm(struct ci_hdrc *ci, bool enable);
 #endif	/* __DRIVERS_USB_CHIPIDEA_CI_H */

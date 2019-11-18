@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2014 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2006-2015 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -36,6 +36,7 @@
 #include <linux/io.h>
 #include <linux/slab.h>
 #include <linux/workqueue.h>
+#include <linux/sched/signal.h>
 #include <linux/sched.h>
 #include <linux/vmalloc.h>
 #include <linux/regulator/consumer.h>
@@ -61,7 +62,7 @@
 #endif
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0)
-#include <linux/busfreq-imx6.h>
+#include <linux/busfreq-imx.h>
 #include <linux/clk.h>
 #include <linux/genalloc.h>
 #include <linux/mxc_vpu.h>
@@ -175,7 +176,9 @@ static int cpu_is_mx6q(void)
 static void vpu_reset(void)
 {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0)
-	device_reset(vpu_dev);
+	int ret;
+
+	ret = device_reset(vpu_dev);
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(3, 5, 0)
 	imx_src_reset_vpu();
 #else
@@ -899,7 +902,7 @@ static int vpu_dev_probe(struct platform_device *pdev)
 	if (!err && iramsize)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0)
 	{
-		iram_pool = of_get_named_gen_pool(np, "iram", 0);
+		iram_pool = of_gen_pool_get(np, "iram", 0);
 		if (!iram_pool) {
 			dev_err(&pdev->dev, "iram pool not available\n");
 			return -ENOMEM;
@@ -1062,7 +1065,7 @@ static int vpu_dev_remove(struct platform_device *pdev)
 
 #ifdef CONFIG_PM
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 5, 0)
-static int vpu_suspend(struct device *dev)
+static int __maybe_unused vpu_suspend(struct device *dev)
 #else
 static int vpu_suspend(struct platform_device *pdev, pm_message_t state)
 #endif
@@ -1138,7 +1141,7 @@ static int vpu_suspend(struct platform_device *pdev, pm_message_t state)
 }
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 5, 0)
-static int vpu_resume(struct device *dev)
+static int __maybe_unused vpu_resume(struct device *dev)
 #else
 static int vpu_resume(struct platform_device *pdev)
 #endif

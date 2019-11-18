@@ -2,7 +2,7 @@
 #
 # Build a kvm-ready Linux kernel from the tree in the current directory.
 #
-# Usage: sh kvm-build.sh config-template build-dir more-configs
+# Usage: kvm-build.sh config-template build-dir
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -34,24 +34,17 @@ then
 	echo "kvm-build.sh :$builddir: Not a writable directory, cannot build into it"
 	exit 1
 fi
-moreconfigs=${3}
-if test -z "$moreconfigs" -o ! -r "$moreconfigs"
-then
-	echo "kvm-build.sh :$moreconfigs: Not a readable file"
-	exit 1
-fi
 
 T=/tmp/test-linux.sh.$$
 trap 'rm -rf $T' 0
 mkdir $T
 
-cat ${config_template} | grep -v CONFIG_RCU_TORTURE_TEST > $T/config
+cp ${config_template} $T/config
 cat << ___EOF___ >> $T/config
-CONFIG_INITRAMFS_SOURCE="$RCU_INITRD"
+CONFIG_INITRAMFS_SOURCE="$TORTURE_INITRD"
 CONFIG_VIRTIO_PCI=y
 CONFIG_VIRTIO_CONSOLE=y
 ___EOF___
-cat $moreconfigs >> $T/config
 
 configinit.sh $T/config O=$builddir
 retval=$?
@@ -60,7 +53,7 @@ then
 	exit 2
 fi
 ncpus=`cpus2use.sh`
-make O=$builddir -j$ncpus $RCU_KMAKE_ARG > $builddir/Make.out 2>&1
+make O=$builddir -j$ncpus $TORTURE_KMAKE_ARG > $builddir/Make.out 2>&1
 retval=$?
 if test $retval -ne 0 || grep "rcu[^/]*": < $builddir/Make.out | egrep -q "Stop|Error|error:|warning:" || egrep -q "Stop|Error|error:" < $builddir/Make.out
 then

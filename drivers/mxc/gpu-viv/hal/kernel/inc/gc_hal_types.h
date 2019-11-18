@@ -1,20 +1,54 @@
 /****************************************************************************
 *
-*    Copyright (C) 2005 - 2014 by Vivante Corp.
+*    The MIT License (MIT)
 *
-*    This program is free software; you can redistribute it and/or modify
-*    it under the terms of the GNU General Public License as published by
-*    the Free Software Foundation; either version 2 of the license, or
-*    (at your option) any later version.
+*    Copyright (c) 2014 - 2018 Vivante Corporation
+*
+*    Permission is hereby granted, free of charge, to any person obtaining a
+*    copy of this software and associated documentation files (the "Software"),
+*    to deal in the Software without restriction, including without limitation
+*    the rights to use, copy, modify, merge, publish, distribute, sublicense,
+*    and/or sell copies of the Software, and to permit persons to whom the
+*    Software is furnished to do so, subject to the following conditions:
+*
+*    The above copyright notice and this permission notice shall be included in
+*    all copies or substantial portions of the Software.
+*
+*    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+*    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+*    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+*    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+*    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+*    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+*    DEALINGS IN THE SOFTWARE.
+*
+*****************************************************************************
+*
+*    The GPL License (GPL)
+*
+*    Copyright (C) 2014 - 2018 Vivante Corporation
+*
+*    This program is free software; you can redistribute it and/or
+*    modify it under the terms of the GNU General Public License
+*    as published by the Free Software Foundation; either version 2
+*    of the License, or (at your option) any later version.
 *
 *    This program is distributed in the hope that it will be useful,
 *    but WITHOUT ANY WARRANTY; without even the implied warranty of
-*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 *    GNU General Public License for more details.
 *
 *    You should have received a copy of the GNU General Public License
-*    along with this program; if not write to the Free Software
-*    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+*    along with this program; if not, write to the Free Software Foundation,
+*    Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+*
+*****************************************************************************
+*
+*    Note: This software is released under dual MIT and GPL licenses. A
+*    recipient may use this file under the terms of either the MIT license or
+*    GPL License. If you wish to use only one license not the other, you can
+*    indicate your decision by deleting one of the above license notices in your
+*    version of this file.
 *
 *****************************************************************************/
 
@@ -39,6 +73,7 @@
 #include "vadefs.h"
 #elif defined(__QNXNTO__)
 #define _QNX_SOURCE
+#include <stdlib.h>
 #include <stdint.h>
 #include <stddef.h>
 #else
@@ -49,12 +84,10 @@
 #endif
 
 #ifdef _WIN32
-#pragma warning(disable:4127)   /* Conditional expression is constant (do { }
-                                ** while(0)). */
+#pragma warning(disable:4127)   /* Conditional expression is constant (do { } while(0)). */
 #pragma warning(disable:4100)   /* Unreferenced formal parameter. */
 #pragma warning(disable:4204)   /* Non-constant aggregate initializer (C99). */
-#pragma warning(disable:4131)   /* Uses old-style declarator (for Bison and
-                                ** Flex generated files). */
+#pragma warning(disable:4131)   /* Uses old-style declarator. */
 #pragma warning(disable:4206)   /* Translation unit is empty. */
 #pragma warning(disable:4214)   /* Nonstandard extension used :
                                 ** bit field types other than int. */
@@ -87,8 +120,13 @@ extern "C" {
 /******************************************************************************\
 ************************************ Keyword ***********************************
 \******************************************************************************/
+
 #if defined(ANDROID) && defined(__BIONIC_FORTIFY)
-#   define gcmINLINE            __inline__ __attribute__ ((always_inline)) __attribute__ ((gnu_inline)) __attribute__ ((artificial))
+#if defined(__clang__)
+#       define gcmINLINE            __inline__ __attribute__ ((always_inline)) __attribute__ ((gnu_inline))
+#   else
+#       define gcmINLINE            __inline__ __attribute__ ((always_inline)) __attribute__ ((gnu_inline)) __attribute__ ((artificial))
+#   endif
 #elif ((defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)) || defined(__APPLE__))
 #   define gcmINLINE            inline      /* C99 keyword. */
 #elif defined(__GNUC__)
@@ -109,7 +147,7 @@ extern "C" {
 #define gcdDEBUG_CODE           (1 << 5)
 #define gcdDEBUG_STACK          (1 << 6)
 
-#define gcmIS_DEBUG(flag)       ( gcdDEBUG & (flag | gcdDEBUG_ALL) )
+#define gcmIS_DEBUG(flag)       (gcdDEBUG & (flag | gcdDEBUG_ALL) )
 
 #ifndef gcdDEBUG
 #if (defined(DBG) && DBG) || defined(DEBUG) || defined(_DEBUG)
@@ -171,6 +209,7 @@ typedef unsigned short          gctUINT16;
 typedef unsigned int            gctUINT32;
 typedef unsigned long long      gctUINT64;
 typedef uintptr_t               gctUINTPTR_T;
+typedef ptrdiff_t               gctPTRDIFF_T;
 
 typedef gctUINT *               gctUINT_PTR;
 typedef gctUINT8 *              gctUINT8_PTR;
@@ -199,11 +238,11 @@ typedef gctUINT32               gctTRACE;
 #define gcvMAXUINT8             0xff
 #define gcvMINUINT8             0x0
 #define gcvMAXUINT16            0xffff
-#define gcvMINUINT16            0x8000
+#define gcvMINUINT16            0x0
 #define gcvMAXUINT32            0xffffffff
-#define gcvMINUINT32            0x80000000
+#define gcvMINUINT32            0x0
 #define gcvMAXUINT64            0xffffffffffffffff
-#define gcvMINUINT64            0x8000000000000000
+#define gcvMINUINT64            0x0
 #define gcvMAXUINTPTR_T         (~(gctUINTPTR_T)0)
 
 typedef float                   gctFLOAT;
@@ -216,7 +255,6 @@ typedef void *                  gctFILE;
 typedef void *                  gctSIGNAL;
 typedef void *                  gctWINDOW;
 typedef void *                  gctIMAGE;
-typedef void *                  gctSYNC_POINT;
 typedef void *                  gctSHBUF;
 
 typedef void *                  gctSEMAPHORE;
@@ -227,6 +265,8 @@ typedef const void *            gctCONST_POINTER;
 typedef char                    gctCHAR;
 typedef char *                  gctSTRING;
 typedef const char *            gctCONST_STRING;
+
+typedef gctUINT64               gctPHYS_ADDR_T;
 
 typedef struct _gcsCOUNT_STRING
 {
@@ -361,7 +401,7 @@ gcs2D_PROFILE;
 
 /* Macro to combine four characters into a Charcater Code. */
 #define gcmCC(c1, c2, c3, c4) \
-( \
+(\
     (char) (c1) \
     | \
     ((char) (c2) <<  8) \
@@ -374,7 +414,7 @@ gcs2D_PROFILE;
 #define gcmPRINTABLE(c)         ((((c) >= ' ') && ((c) <= '}')) ? ((c) != '%' ?  (c) : ' ') : ' ')
 
 #define gcmCC_PRINT(cc) \
-    gcmPRINTABLE((char) ( (cc)        & 0xFF)), \
+    gcmPRINTABLE((char) ((cc)        & 0xFF)), \
     gcmPRINTABLE((char) (((cc) >>  8) & 0xFF)), \
     gcmPRINTABLE((char) (((cc) >> 16) & 0xFF)), \
     gcmPRINTABLE((char) (((cc) >> 24) & 0xFF))
@@ -444,6 +484,8 @@ typedef enum _gceSTATUS
     gcvSTATUS_INTERRUPTED           =   -26,
     gcvSTATUS_DEVICE                =   -27,
     gcvSTATUS_NOT_MULTI_PIPE_ALIGNED =   -28,
+    gcvSTATUS_OUT_OF_SAMPLER         =   -29,
+    gcvSTATUS_CLOCK_ERROR           =   -30,
 
     /* Linker errors. */
     gcvSTATUS_GLOBAL_TYPE_MISMATCH              =   -1000,
@@ -461,6 +503,7 @@ typedef enum _gceSTATUS
     gcvSTATUS_LINK_INVALID_SHADERS              =   -1012,
     gcvSTATUS_CS_NO_WORKGROUP_SIZE              =   -1013,
     gcvSTATUS_LINK_LIB_ERROR                    =   -1014,
+
     gcvSTATUS_SHADER_VERSION_MISMATCH           =   -1015,
     gcvSTATUS_TOO_MANY_INSTRUCTION              =   -1016,
     gcvSTATUS_SSBO_MISMATCH                     =   -1017,
@@ -469,7 +512,13 @@ typedef enum _gceSTATUS
     gcvSTATUS_NOT_SUPPORT_CL                    =   -1020,
     gcvSTATUS_NOT_SUPPORT_INTEGER               =   -1021,
     gcvSTATUS_UNIFORM_TYPE_MISMATCH             =   -1022,
-    gcvSTATUS_TOO_MANY_SAMPLER                  =   -1023,
+
+    gcvSTATUS_MISSING_PRIMITIVE_TYPE            =   -1023,
+    gcvSTATUS_MISSING_OUTPUT_VERTEX_COUNT       =   -1024,
+    gcvSTATUS_NON_INVOCATION_ID_AS_INDEX        =   -1025,
+    gcvSTATUS_INPUT_ARRAY_SIZE_MISMATCH         =   -1026,
+    gcvSTATUS_OUTPUT_ARRAY_SIZE_MISMATCH        =   -1027,
+    gcvSTATUS_LOCATION_ALIASED                  =   -1028,
 
     /* Compiler errors. */
     gcvSTATUS_COMPILER_FE_PREPROCESSOR_ERROR    =   -2000,
@@ -506,8 +555,8 @@ gceSTATUS;
 
 #define __gcmMASK(reg_field) \
     ((gctUINT32) ((__gcmGETSIZE(reg_field) == 32) \
-        ?  ~0 \
-        : (~(~0 << __gcmGETSIZE(reg_field)))))
+        ?  ~0U \
+        : (~(~0U << __gcmGETSIZE(reg_field)))))
 
 /*******************************************************************************
 **
@@ -521,7 +570,7 @@ gceSTATUS;
 **      field   Name of field within register.
 */
 #define gcmFIELDMASK(reg, field) \
-( \
+(\
     __gcmALIGN(__gcmMASK(reg##_##field), reg##_##field) \
 )
 
@@ -538,7 +587,7 @@ gceSTATUS;
 **      field   Name of field within register.
 */
 #define gcmGETFIELD(data, reg, field) \
-( \
+(\
     ((((gctUINT32) (data)) >> __gcmSTART(reg##_##field)) \
         & __gcmMASK(reg##_##field)) \
 )
@@ -557,7 +606,7 @@ gceSTATUS;
 **      value   Value for field.
 */
 #define gcmSETFIELD(data, reg, field, value) \
-( \
+(\
     (((gctUINT32) (data)) \
         & ~__gcmALIGN(__gcmMASK(reg##_##field), reg##_##field)) \
         |  __gcmALIGN((gctUINT32) (value) \
@@ -579,7 +628,7 @@ gceSTATUS;
 **      value   Name of the value within the field.
 */
 #define gcmSETFIELDVALUE(data, reg, field, value) \
-( \
+(\
     (((gctUINT32) (data)) \
         & ~__gcmALIGN(__gcmMASK(reg##_##field), reg##_##field)) \
         |  __gcmALIGN(reg##_##field##_##value \
@@ -598,9 +647,9 @@ gceSTATUS;
 **      field   Name of field within register.
 */
 #define gcmGETMASKEDFIELDMASK(reg, field) \
-( \
-    gcmSETFIELD(0, reg,          field, ~0) | \
-    gcmSETFIELD(0, reg, MASK_ ## field, ~0)   \
+(\
+    gcmSETFIELD(0, reg, field, ~0U) | \
+    gcmSETFIELD(0, reg, MASK_ ## field, ~0U)   \
 )
 
 /*******************************************************************************
@@ -616,9 +665,9 @@ gceSTATUS;
 **      value   Value for field.
 */
 #define gcmSETMASKEDFIELD(reg, field, value) \
-( \
-    gcmSETFIELD     (~0, reg,          field, value) & \
-    gcmSETFIELDVALUE(~0, reg, MASK_ ## field, ENABLED) \
+(\
+    gcmSETFIELD     (~0U, reg, field, value) & \
+    gcmSETFIELDVALUE(~0U, reg, MASK_ ## field, ENABLED) \
 )
 
 /*******************************************************************************
@@ -634,9 +683,9 @@ gceSTATUS;
 **      value   Value for field.
 */
 #define gcmSETMASKEDFIELDVALUE(reg, field, value) \
-( \
-    gcmSETFIELDVALUE(~0, reg,          field, value) & \
-    gcmSETFIELDVALUE(~0, reg, MASK_ ## field, ENABLED) \
+(\
+    gcmSETFIELDVALUE(~0U, reg, field, value) & \
+    gcmSETFIELDVALUE(~0U, reg, MASK_ ## field, ENABLED) \
 )
 
 /*******************************************************************************
@@ -654,7 +703,7 @@ gceSTATUS;
 **      value   Name of the value within the field.
 */
 #define gcmVERIFYFIELDVALUE(data, reg, field, value) \
-( \
+(\
     (((gctUINT32) (data)) >> __gcmSTART(reg##_##field) & \
                              __gcmMASK(reg##_##field)) \
         == \
@@ -666,30 +715,30 @@ gceSTATUS;
 */
 
 #define __gcmSTARTBIT(Field) \
-    ( 1 ? Field )
+    (1 ? Field )
 
 #define __gcmBITSIZE(Field) \
-    ( 0 ? Field )
+    (0 ? Field )
 
 #define __gcmBITMASK(Field) \
-( \
+(\
     (1 << __gcmBITSIZE(Field)) - 1 \
 )
 
 #define gcmGETBITS(Value, Type, Field) \
-( \
-    ( ((Type) (Value)) >> __gcmSTARTBIT(Field) ) \
+(\
+    (((Type) (Value)) >> __gcmSTARTBIT(Field) ) \
     & \
     __gcmBITMASK(Field) \
 )
 
 #define gcmSETBITS(Value, Type, Field, NewValue) \
-( \
-    ( ((Type) (Value)) \
+(\
+    (((Type) (Value)) \
     & ~(__gcmBITMASK(Field) << __gcmSTARTBIT(Field)) \
     ) \
     | \
-    ( ( ((Type) (NewValue)) \
+    ((((Type) (NewValue)) \
       & __gcmBITMASK(Field) \
       ) << __gcmSTARTBIT(Field) \
     ) \
@@ -708,14 +757,14 @@ gceSTATUS;
 */
 
 #define gcmISINREGRANGE(Address, Name) \
-( \
+(\
     ((Address & (~0U << Name ## _LSB)) == (Name ## _Address >> 2)) \
 )
 
 /******************************************************************************\
 ******************************** Ceiling Macro ********************************
 \******************************************************************************/
-#define gcmCEIL(x) ((x - (gctUINT32)x) == 0 ? (gctUINT32)x : (gctUINT32)x + 1)
+#define gcmCEIL(x) (((x) - (gctUINT32)(x)) == 0 ? (gctUINT32)(x) : (gctUINT32)(x) + 1)
 
 /******************************************************************************\
 ******************************** Min/Max Macros ********************************
@@ -734,7 +783,7 @@ gceSTATUS;
 #define gcmBITSET(x, y)         ((x) & (y))
 /*******************************************************************************
 **
-**  gcmPTR2INT
+**  gcmPTR2SIZE
 **
 **      Convert a pointer to an integer value.
 **
@@ -742,13 +791,13 @@ gceSTATUS;
 **
 **      p       Pointer value.
 */
-#define gcmPTR2INT(p) \
-( \
+#define gcmPTR2SIZE(p) \
+(\
     (gctUINTPTR_T) (p) \
 )
 
 #define gcmPTR2INT32(p) \
-( \
+(\
     (gctUINT32)(gctUINTPTR_T) (p) \
 )
 
@@ -764,7 +813,7 @@ gceSTATUS;
 */
 
 #define gcmINT2PTR(i) \
-( \
+(\
     (gctPOINTER) (gctUINTPTR_T)(i) \
 )
 
@@ -780,21 +829,43 @@ gceSTATUS;
 **      field   Field name.
 */
 #define gcmOFFSETOF(s, field) \
-( \
+(\
     gcmPTR2INT32(& (((struct s *) 0)->field)) \
 )
 
 /*******************************************************************************
 **
-** gcmSWAB32
+**  gcmCONTAINEROF
+**
+**      Get containing structure of a member.
+**
+**  ARGUMENTS:
+**
+**      Pointer Pointer of member.
+**      Type    Structure name.
+**      Name    Field name.
+*/
+#define gcmCONTAINEROF(Pointer, Type, Member) \
+(\
+    (struct Type *)((gctUINTPTR_T)Pointer - gcmOFFSETOF(Type, Member)) \
+)
+
+/*******************************************************************************
+**
+** gcmBSWAP32
 **
 **      Return a value with all bytes in the 32 bit argument swapped.
 */
-#define gcmSWAB32(x) ((gctUINT32)( \
+#if !defined(__KERNEL__) && defined(__GNUC__) && (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__ >= 40300) \
+   && !defined(__VXWORKS__)
+#  define gcmBSWAP32(x)     __builtin_bswap32(x)
+#else
+#  define gcmBSWAP32(x) ((gctUINT32)(\
         (((gctUINT32)(x) & (gctUINT32)0x000000FFUL) << 24) | \
         (((gctUINT32)(x) & (gctUINT32)0x0000FF00UL) << 8)  | \
         (((gctUINT32)(x) & (gctUINT32)0x00FF0000UL) >> 8)  | \
         (((gctUINT32)(x) & (gctUINT32)0xFF000000UL) >> 24)))
+#endif
 
 /*******************************************************************************
 ***** Database ****************************************************************/
@@ -809,6 +880,12 @@ typedef struct _gcsDATABASE_COUNTERS
 
     /* Total number of bytes allocated. */
     gctUINT64                   totalBytes;
+
+    /* The numbers of times video memory was allocated. */
+    gctUINT32                   allocCount;
+
+    /* The numbers of times video memory was freed. */
+    gctUINT32                   freeCount;
 }
 gcsDATABASE_COUNTERS;
 
@@ -877,40 +954,39 @@ typedef struct _gcsHAL_FRAME_INFO
 }
 gcsHAL_FRAME_INFO;
 
-#if gcdLINK_QUEUE_SIZE
 typedef struct _gckLINKDATA * gckLINKDATA;
 struct _gckLINKDATA
 {
     gctUINT32                   start;
     gctUINT32                   end;
     gctUINT32                   pid;
+    gctUINT32                   linkLow;
+    gctUINT32                   linkHigh;
 };
 
-typedef struct _gckLINKQUEUE * gckLINKQUEUE;
-struct _gckLINKQUEUE
+typedef struct _gckADDRESSDATA * gckADDRESSDATA;
+struct _gckADDRESSDATA
 {
-    struct _gckLINKDATA         data[gcdLINK_QUEUE_SIZE];
+    gctUINT32                   start;
+    gctUINT32                   end;
+};
+
+typedef union _gcuQUEUEDATA
+{
+    struct _gckLINKDATA         linkData;
+
+    struct _gckADDRESSDATA      addressData;
+}
+gcuQUEUEDATA;
+
+typedef struct _gckQUEUE * gckQUEUE;
+struct _gckQUEUE
+{
+    gcuQUEUEDATA *              datas;
     gctUINT32                   rear;
     gctUINT32                   front;
     gctUINT32                   count;
-};
-#endif
-
-#define gcdENTRY_QUEUE_SIZE 256
-typedef struct _gckENTRYDATA * gckENTRYDATA;
-struct _gckENTRYDATA
-{
-    gctUINT32                   physical;
-    gctUINT32                   bytes;
-};
-
-typedef struct _gckENTRYQUEUE * gckENTRYQUEUE;
-struct _gckENTRYQUEUE
-{
-    struct _gckENTRYDATA        data[gcdENTRY_QUEUE_SIZE];
-    gctUINT32                   rear;
-    gctUINT32                   front;
-    gctUINT32                   count;
+    gctUINT32                   size;
 };
 
 typedef enum _gceTRACEMODE
@@ -920,13 +996,42 @@ typedef enum _gceTRACEMODE
     gcvTRACEMODE_LOGGER   = 2,
     gcvTRACEMODE_PRE      = 3,
     gcvTRACEMODE_POST     = 4,
-    gcvTRACEMODE_SYSTRACE = 5,
-
 } gceTRACEMODE;
 
+typedef struct _gcsLISTHEAD * gcsLISTHEAD_PTR;
+typedef struct _gcsLISTHEAD
+{
+    gcsLISTHEAD_PTR     prev;
+    gcsLISTHEAD_PTR     next;
+}
+gcsLISTHEAD;
+
+/*
+    gcvFEATURE_DATABASE_DATE_MASK
+
+    Mask used to control which bits of chip date will be used to
+    query feature database, ignore release date for fpga and emulator.
+*/
+#if (gcdFPGA_BUILD || defined(EMULATOR))
+#   define gcvFEATURE_DATABASE_DATE_MASK    (0U)
+#else
+#   define gcvFEATURE_DATABASE_DATE_MASK    (~0U)
+#endif
+
+#if defined(__GNUC__)
+#if defined(__BYTE_ORDER__) && defined(__ORDER_BIG_ENDIAN__) && (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
+#define gcdENDIAN_BIG   1
+#else
+#define gcdENDIAN_BIG   0
+#endif
+#else
+#define gcdENDIAN_BIG   0
+#endif
 
 #ifdef __cplusplus
 }
 #endif
 
 #endif /* __gc_hal_types_h_ */
+
+

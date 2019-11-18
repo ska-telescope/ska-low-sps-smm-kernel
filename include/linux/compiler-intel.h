@@ -1,4 +1,5 @@
-#ifndef __LINUX_COMPILER_H
+/* SPDX-License-Identifier: GPL-2.0 */
+#ifndef __LINUX_COMPILER_TYPES_H
 #error "Please don't include <linux/compiler-intel.h> directly, include <linux/compiler.h> instead."
 #endif
 
@@ -14,10 +15,12 @@
  * It uses intrinsics to do the equivalent things.
  */
 #undef barrier
+#undef barrier_data
 #undef RELOC_HIDE
 #undef OPTIMIZER_HIDE_VAR
 
 #define barrier() __memory_barrier()
+#define barrier_data(ptr) barrier()
 
 #define RELOC_HIDE(ptr, off)					\
   ({ unsigned long __ptr;					\
@@ -41,3 +44,7 @@
 #define __builtin_bswap16 _bswap16
 #endif
 
+/*
+ * icc defines __GNUC__, but does not implement the builtin overflow checkers.
+ */
+#undef COMPILER_HAS_GENERIC_BUILTIN_OVERFLOW

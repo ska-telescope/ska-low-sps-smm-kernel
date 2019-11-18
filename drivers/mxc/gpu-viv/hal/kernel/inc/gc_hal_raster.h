@@ -1,20 +1,54 @@
 /****************************************************************************
 *
-*    Copyright (C) 2005 - 2014 by Vivante Corp.
+*    The MIT License (MIT)
 *
-*    This program is free software; you can redistribute it and/or modify
-*    it under the terms of the GNU General Public License as published by
-*    the Free Software Foundation; either version 2 of the license, or
-*    (at your option) any later version.
+*    Copyright (c) 2014 - 2018 Vivante Corporation
+*
+*    Permission is hereby granted, free of charge, to any person obtaining a
+*    copy of this software and associated documentation files (the "Software"),
+*    to deal in the Software without restriction, including without limitation
+*    the rights to use, copy, modify, merge, publish, distribute, sublicense,
+*    and/or sell copies of the Software, and to permit persons to whom the
+*    Software is furnished to do so, subject to the following conditions:
+*
+*    The above copyright notice and this permission notice shall be included in
+*    all copies or substantial portions of the Software.
+*
+*    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+*    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+*    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+*    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+*    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+*    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+*    DEALINGS IN THE SOFTWARE.
+*
+*****************************************************************************
+*
+*    The GPL License (GPL)
+*
+*    Copyright (C) 2014 - 2018 Vivante Corporation
+*
+*    This program is free software; you can redistribute it and/or
+*    modify it under the terms of the GNU General Public License
+*    as published by the Free Software Foundation; either version 2
+*    of the License, or (at your option) any later version.
 *
 *    This program is distributed in the hope that it will be useful,
 *    but WITHOUT ANY WARRANTY; without even the implied warranty of
-*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 *    GNU General Public License for more details.
 *
 *    You should have received a copy of the GNU General Public License
-*    along with this program; if not write to the Free Software
-*    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+*    along with this program; if not, write to the Free Software Foundation,
+*    Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+*
+*****************************************************************************
+*
+*    Note: This software is released under dual MIT and GPL licenses. A
+*    recipient may use this file under the terms of either the MIT license or
+*    GPL License. If you wish to use only one license not the other, you can
+*    indicate your decision by deleting one of the above license notices in your
+*    version of this file.
 *
 *****************************************************************************/
 
@@ -181,41 +215,6 @@ gcoSURF_DisableAlphaBlend(
     IN gcoSURF Surface
     );
 
-/* Copy a rectangular area with format conversion. */
-gceSTATUS
-gcoSURF_CopyPixels(
-    IN gcoSURF Source,
-    IN gcoSURF Target,
-    IN gctINT SourceX,
-    IN gctINT SourceY,
-    IN gctINT TargetX,
-    IN gctINT TargetY,
-    IN gctINT Width,
-    IN gctINT Height
-    );
-
-/* Read surface pixel. */
-gceSTATUS
-gcoSURF_ReadPixel(
-    IN gcoSURF Surface,
-    IN gctPOINTER Memory,
-    IN gctINT X,
-    IN gctINT Y,
-    IN gceSURF_FORMAT Format,
-    OUT gctPOINTER PixelValue
-    );
-
-/* Write surface pixel. */
-gceSTATUS
-gcoSURF_WritePixel(
-    IN gcoSURF Surface,
-    IN gctPOINTER Memory,
-    IN gctINT X,
-    IN gctINT Y,
-    IN gceSURF_FORMAT Format,
-    IN gctPOINTER PixelValue
-    );
-
 gceSTATUS
 gcoSURF_SetDither(
     IN gcoSURF Surface,
@@ -340,6 +339,24 @@ gco2D_SetColorSourceEx(
     IN gctUINT32 TransparencyColor
     );
 
+/* Same as gco2D_SetColorSourceEx, but with better 64bit SW-path support.
+** Please do NOT export the API now.
+*/
+gceSTATUS
+gco2D_SetColorSource64(
+    IN gco2D Engine,
+    IN gctUINT32 Address,
+    IN gctPOINTER Logical,
+    IN gctUINT32 Stride,
+    IN gceSURF_FORMAT Format,
+    IN gceSURF_ROTATION Rotation,
+    IN gctUINT32 SurfaceWidth,
+    IN gctUINT32 SurfaceHeight,
+    IN gctBOOL CoordRelative,
+    IN gceSURF_TRANSPARENCY Transparency,
+    IN gctUINT32 TransparencyColor
+    );
+
 /* Configure color source. */
 gceSTATUS
 gco2D_SetColorSourceAdvanced(
@@ -390,6 +407,23 @@ gco2D_SetMaskedSourceEx(
     IN gctUINT32 SurfaceHeight
     );
 
+/* Same as gco2D_SetMaskedSourceEx, but with better 64bit SW-path support.
+** Please do NOT export the API now.
+*/
+gceSTATUS
+gco2D_SetMaskedSource64(
+    IN gco2D Engine,
+    IN gctUINT32 Address,
+    IN gctPOINTER Logical,
+    IN gctUINT32 Stride,
+    IN gceSURF_FORMAT Format,
+    IN gctBOOL CoordRelative,
+    IN gceSURF_MONOPACK MaskPack,
+    IN gceSURF_ROTATION Rotation,
+    IN gctUINT32 SurfaceWidth,
+    IN gctUINT32 SurfaceHeight
+    );
+
 /* Setup the source rectangle. */
 gceSTATUS
 gco2D_SetSource(
@@ -424,6 +458,21 @@ gco2D_SetTargetEx(
     IN gctUINT32 SurfaceWidth,
     IN gctUINT32 SurfaceHeight
     );
+
+/* Same as gco2D_SetTargetEx, but with better 64bit SW-path support.
+** Please do NOT export the API now.
+*/
+gceSTATUS
+gco2D_SetTarget64(
+    IN gco2D Engine,
+    IN gctUINT32 Address,
+    IN gctPOINTER Logical,
+    IN gctUINT32 Stride,
+    IN gceSURF_ROTATION Rotation,
+    IN gctUINT32 SurfaceWidth,
+    IN gctUINT32 SurfaceHeight
+    );
+
 
 /* Calculate and program the stretch factors. */
 gceSTATUS
@@ -1031,8 +1080,30 @@ gco2D_Get2DEngine(
     OUT gco2D * Engine
     );
 
+gceSTATUS
+gco2D_Commit(
+    IN gco2D Engine,
+    IN gctBOOL Stall
+    );
+
+gceSTATUS
+gco2D_NatureRotateTranslation(
+    IN gctBOOL IsSrcRot,
+    IN gce2D_NATURE_ROTATION NatureRotation,
+    IN gctINT32 SrcSurfaceWidth,
+    IN gctINT32 SrcSurfaceHeight,
+    IN gctINT32 DstSurfaceWidth,
+    IN gctINT32 DstSurfaceHeight,
+    IN OUT gcsRECT_PTR SrcRect,
+    IN OUT gcsRECT_PTR DstRect,
+    OUT gceSURF_ROTATION * SrcRotation,
+    OUT gceSURF_ROTATION * DstRotation
+    );
+
 #ifdef __cplusplus
 }
 #endif
 
 #endif /* __gc_hal_raster_h_ */
+
+

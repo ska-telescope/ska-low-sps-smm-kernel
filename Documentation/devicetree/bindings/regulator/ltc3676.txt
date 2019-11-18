@@ -69,15 +69,6 @@ Example:
 				regulator-always-on;
 			};
 
-			/* unused */
-			ldo1_reg: ldo1 {
-				regulator-min-microvolt = <0>;
-				regulator-max-microvolt = <0>;
-				lltc,fb-voltage-divider = <0 0>;
-				regulator-boot-on;
-				regulator-always-on;
-			};
-
 			ldo2_reg: ldo2 {
 				regulator-min-microvolt = <2490375>;
 				regulator-max-microvolt = <2490375>;

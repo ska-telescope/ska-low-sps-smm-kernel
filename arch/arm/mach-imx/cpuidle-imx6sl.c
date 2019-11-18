@@ -1,20 +1,25 @@
 /*
  * Copyright (C) 2014-2015 Freescale Semiconductor, Inc.
+ * Copyright 2017-2018 NXP.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
 
+#include <linux/busfreq-imx.h>
 #include <linux/cpuidle.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
+#include <linux/psci.h>
 #include <linux/regulator/consumer.h>
 #include <linux/regulator/driver.h>
 #include <linux/regulator/machine.h>
 #include <asm/cpuidle.h>
 #include <asm/fncpy.h>
 #include <asm/proc-fns.h>
+
+#include <uapi/linux/psci.h>
 
 #include "common.h"
 #include "cpuidle.h"
@@ -24,10 +29,11 @@
 
 static void __iomem *wfi_iram_base;
 extern unsigned long iram_tlb_base_addr;
-extern int ultra_low_bus_freq_mode;
-extern int audio_bus_freq_mode;
+
+#ifdef CONFIG_CPU_FREQ
 extern unsigned long mx6sl_lpm_wfi_start asm("mx6sl_lpm_wfi_start");
 extern unsigned long mx6sl_lpm_wfi_end asm("mx6sl_lpm_wfi_end");
+#endif
 
 struct imx6_cpuidle_pm_info {
 	u32 pm_info_size; /* Size of pm_info */
@@ -61,13 +67,30 @@ static int ldo2p5_dummy_enable;
 static void (*imx6sl_wfi_in_iram_fn)(void __iomem *iram_vbase,
 		int audio_mode, bool vbus_ldo);
 
+#define MX6SL_POWERDWN_IDLE_PARAM	\
+	((1 << PSCI_0_2_POWER_STATE_ID_SHIFT) | \
+	 (1 << PSCI_0_2_POWER_STATE_AFFL_SHIFT) | \
+	 (PSCI_POWER_STATE_TYPE_POWER_DOWN << PSCI_0_2_POWER_STATE_TYPE_SHIFT))
+
 static int imx6sl_enter_wait(struct cpuidle_device *dev,
 			    struct cpuidle_driver *drv, int index)
 {
-	imx6q_set_lpm(WAIT_UNCLOCKED);
-	if (audio_bus_freq_mode || ultra_low_bus_freq_mode) {
-		imx6sl_wfi_in_iram_fn(wfi_iram_base, audio_bus_freq_mode,
-			regulator_is_enabled(vbus_ldo));
+	int mode = get_bus_freq_mode();
+
+	imx6_set_lpm(WAIT_UNCLOCKED);
+
+	if ((mode == BUS_FREQ_AUDIO) || (mode == BUS_FREQ_ULTRA_LOW)) {
+		/*
+		 * bit 2 used for low power mode;
+		 * bit 1 used for the ldo2p5_dummmy enable
+		 */
+		if (psci_ops.cpu_suspend) {
+			psci_ops.cpu_suspend((MX6SL_POWERDWN_IDLE_PARAM | ((mode == BUS_FREQ_AUDIO ? 1 : 0) << 2) |
+				(ldo2p5_dummy_enable ? 1 : 0) << 1), __pa(cpu_resume));
+		} else {
+			imx6sl_wfi_in_iram_fn(wfi_iram_base, (mode == BUS_FREQ_AUDIO) ? 1 : 0,
+				ldo2p5_dummy_enable);
+		}
 	} else {
 		/*
 		 * Software workaround for ERR005311, see function
@@ -77,7 +100,7 @@ static int imx6sl_enter_wait(struct cpuidle_device *dev,
 		cpu_do_idle();
 		imx6sl_set_wait_clk(false);
 	}
-	imx6q_set_lpm(WAIT_CLOCKED);
+	imx6_set_lpm(WAIT_CLOCKED);
 
 	return index;
 }
@@ -92,8 +115,7 @@ static struct cpuidle_driver imx6sl_cpuidle_driver = {
 		{
 			.exit_latency = 50,
 			.target_residency = 75,
-			.flags = CPUIDLE_FLAG_TIME_VALID |
-				CPUIDLE_FLAG_TIMER_STOP,
+			.flags = CPUIDLE_FLAG_TIMER_STOP,
 			.enter = imx6sl_enter_wait,
 			.name = "WAIT",
 			.desc = "Clock off",
@@ -105,6 +127,8 @@ static struct cpuidle_driver imx6sl_cpuidle_driver = {
 
 int __init imx6sl_cpuidle_init(void)
 {
+
+#ifdef CONFIG_CPU_FREQ
 	struct imx6_cpuidle_pm_info *pm_info;
 	int i;
 	const u32 *mmdc_offset_array;
@@ -138,7 +162,8 @@ int __init imx6sl_cpuidle_init(void)
 	wfi_code_size = (&mx6sl_lpm_wfi_end -&mx6sl_lpm_wfi_start) *4;
 
 	imx6sl_wfi_in_iram_fn = (void *)fncpy(wfi_iram_base + sizeof(*pm_info),
-		&imx6sl_low_power_wfi, wfi_code_size);
+		&imx6sl_low_power_idle, wfi_code_size);
+#endif
 
 	return cpuidle_register(&imx6sl_cpuidle_driver, NULL);
 }

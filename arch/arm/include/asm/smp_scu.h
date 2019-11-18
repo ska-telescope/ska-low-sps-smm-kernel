@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 #ifndef __ASMARM_ARCH_SCU_H
 #define __ASMARM_ARCH_SCU_H
 
@@ -7,11 +8,12 @@
 
 #ifndef __ASSEMBLER__
 
+#include <linux/errno.h>
 #include <asm/cputype.h>
 
 static inline bool scu_a9_has_base(void)
 {
-	return read_cpuid_part_number() == ARM_CPU_PART_CORTEX_A9;
+	return read_cpuid_part() == ARM_CPU_PART_CORTEX_A9;
 }
 
 static inline unsigned long scu_a9_get_base(void)

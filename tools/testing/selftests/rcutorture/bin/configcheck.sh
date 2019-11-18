@@ -1,5 +1,5 @@
-#!/bin/sh
-# Usage: sh configcheck.sh .config .config-template
+#!/bin/bash
+# Usage: configcheck.sh .config .config-template
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@ cat $1 > $T/.config
 
 cat $2 | sed -e 's/\(.*\)=n/# \1 is not set/' -e 's/^#CHECK#//' |
 awk	'
-BEGIN	{
+{
 		print "if grep -q \"" $0 "\" < '"$T/.config"'";
 		print "then";
 		print "\t:";

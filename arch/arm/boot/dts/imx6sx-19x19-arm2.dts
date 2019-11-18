@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2014 Freescale Semiconductor, Inc.
+ * Copyright 2017 NXP.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -30,10 +31,10 @@
 	};
 
 	clocks {
-	        codec_osc: codec_osc {
-		        #clock-cells = <0>;
-		        compatible = "fixed-clock";
-		        clock-frequency = <12000000>;
+		codec_osc: codec_osc {
+			#clock-cells = <0>;
+			compatible = "fixed-clock";
+			clock-frequency = <12000000>;
 		};
 	};
 
@@ -110,8 +111,34 @@
 };
 
 &cpu0 {
-	arm-supply = <&sw1a_reg>;
-	soc-supply = <&sw1c_reg>;
+	operating-points = <
+		/* kHz    uV */
+		996000  1275000
+		792000  1175000
+		396000  1075000
+		198000	975000
+		>;
+	fsl,soc-operating-points = <
+		/* ARM kHz      SOC uV */
+		996000	1175000
+		792000	1175000
+		396000	1175000
+		198000	1175000
+	>;
+};
+
+&reg_arm {
+	vin-supply = <&sw1a_reg>;
+	regulator-allow-bypass;
+};
+
+&reg_soc {
+	vin-supply = <&sw1c_reg>;
+	regulator-allow-bypass;
+};
+
+&gpc {
+	fsl,ldo-bypass = <1>;
 };
 
 &fec1 {
@@ -149,20 +176,11 @@
 	status = "okay";
 };
 
-&gpc {
-	fsl,cpu_pupscr_sw2iso = <0x2>;
-	fsl,cpu_pupscr_sw = <0x1>;
-	fsl,cpu_pdnscr_iso2sw = <0x1>;
-	fsl,cpu_pdnscr_iso = <0x1>;
-	fsl,wdog-reset = <1>; /* watchdog select of reset source */
-	fsl,ldo-bypass = <1>; /* use ldo-bypass, u-boot will check it and configure */
-};
-
 &i2c1 {
-        clock-frequency = <100000>;
-        pinctrl-names = "default";
-        pinctrl-0 = <&pinctrl_i2c1_1>;
-        status = "okay";
+	clock-frequency = <100000>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_i2c1_1>;
+	status = "okay";
 
 	pmic: pfuze100@08 {
 		compatible = "fsl,pfuze100";
@@ -209,6 +227,7 @@
 			sw4_reg: sw4 {
 				regulator-min-microvolt = <800000>;
 				regulator-max-microvolt = <3300000>;
+				regulator-always-on;
 			};
 
 			swbst_reg: swbst {
@@ -352,7 +371,6 @@
 			fsl,pins = <
 				MX6SX_PAD_SD4_DATA4__GPIO6_IO_18     0x1b0b0
 				MX6SX_PAD_KEY_ROW1__GPIO2_IO_16      0x1b0b0
-				MX6SX_PAD_GPIO1_IO13__WDOG1_WDOG_ANY 0x10b0
 			 >;
 		};
 	};
@@ -401,44 +419,6 @@
 	};
 };
 
-&ldb {
-	status = "okay";
-
-	lvds-channel@0 {
-		fsl,data-mapping = "spwg";
-		fsl,data-width = <18>;
-		crtc = "lcdif2";
-		status = "okay";
-
-		display-timings {
-			native-mode = <&timing1>;
-			timing1: hsd100pxn1 {
-				clock-frequency = <65000000>;
-				hactive = <1024>;
-				vactive = <768>;
-				hback-porch = <220>;
-				hfront-porch = <40>;
-				vback-porch = <21>;
-				vfront-porch = <7>;
-				hsync-len = <60>;
-				vsync-len = <10>;
-			};
-		};
-	};
-};
-
-&dcic1 {
-	dcic_id = <0>;
-	dcic_mux = "dcic-lcdif1";
-	status = "okay";
-};
-
-&dcic2 {
-	dcic_id = <1>;
-	dcic_mux = "dcic-lvds";
-	status = "okay";
-};
-
 &pwm3 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pwm3_0>;
@@ -453,6 +433,10 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_sai1_1>;
 	status = "disabled";
+};
+
+&snvs_poweroff {
+	status = "okay";
 };
 
 &uart1 {
@@ -504,6 +488,9 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_usbotg1_1>;
 	disable-over-current;
+	srp-disable;
+	hnp-disable;
+	adp-disable;
 	status = "okay";
 };
 
@@ -545,6 +532,12 @@
 			remote-endpoint = <&csi2_ep>;
 		};
 	};
+};
+
+&wdog1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_wdog>;
+	fsl,ext-reset-output;
 };
 
 &iomuxc {
@@ -1196,6 +1189,14 @@
 				>;
 			};
 
+	};
+
+	wdog {
+		pinctrl_wdog: wdoggrp {
+			fsl,pins = <
+				MX6SX_PAD_GPIO1_IO13__WDOG1_WDOG_ANY 0x10b0
+			>;
+		};
 	};
 
 	weim {
