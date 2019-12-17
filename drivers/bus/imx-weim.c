@@ -77,7 +77,7 @@ static int __init imx_weim_gpr_setup(struct platform_device *pdev)
 	int i = 0;
 
 	/*gpr = syscon_regmap_lookup_by_phandle(np, "fsl,weim-cs-gpr");*/
-	gpr = syscon_regmap_lookup_by_compatible(np, "fsl,weim-cs-gpr");
+	gpr = syscon_regmap_lookup_by_compatible("fsl,weim-cs-gpr");
 	if (IS_ERR(gpr)) {
 		dev_dbg(&pdev->dev, "failed to find weim-cs-gpr\n");
 		return 0;
