@@ -166,7 +166,7 @@
     
     skamnghkregs: skamnghkregs@08000500 {
     compatible = "sanitas,ska-mng-hkregs";
-    reg = <0x08000500 0x200>;
+    reg = <0x08000500 0x40c>;
     status = "okay";     
     };
     
@@ -175,6 +175,14 @@
     reg = <0x08000100 0x204>;
     status = "okay";     
     };
+    
+    skamnglockregs: skamnglockregs@080C0000  {
+    compatible = "sanitas,ska-mng-lockregs";
+    reg = <0x080C0000 0x8>;
+    status = "okay";     
+    };
+    
+    
 
     skamngframregs: skamngframregs@08090000 {
     compatible = "sanitas,ska-mng-framregs";

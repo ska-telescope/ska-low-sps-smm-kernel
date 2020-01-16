@@ -6,18 +6,19 @@
 #undef REGISTER_REG_NAME
 
 #include "REGISTER_RESET.h"
-#define REGISTER_DESCRIPTION "Backplane Present"
-#define REGISTER_MODE_READ
-#define REGISTER_CMDS {0x00, 0, 0, 32}
-#include "REGISTER_MAKE.h"
-DEFECATE(BackplanePresent)
-
-#include "REGISTER_RESET.h"
 #define REGISTER_DESCRIPTION "TPMs Present"
 #define REGISTER_MODE_READ
 #define REGISTER_CMDS {0x04, 0, 0, 32}
 #include "REGISTER_MAKE.h"
 DEFECATE(TPMsPresent)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "PPS MUX"
+#define REGISTER_MODE_READ
+#define REGISTER_MODE_WRITE
+#define REGISTER_CMDS {0x08, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(PPSMux)
 
 #include "REGISTER_RESET.h"
 #define REGISTER_DESCRIPTION "House Keeping Temperature Register"
@@ -44,30 +45,31 @@ DEFECATE(TempAlarm1)
 #include "REGISTER_RESET.h"
 #define REGISTER_DESCRIPTION "House Keeping Voltages Register"
 #define REGISTER_MODE_READ
-#define REGISTER_CMDS {0x200, 0, 0, 32}
+#define REGISTER_CMDS {0x104, 0, 0, 32}
 #include "REGISTER_MAKE.h"
 DEFECATE(HKVoltagesReg)
 
 
 #include "REGISTER_RESET.h"
-#define REGISTER_DESCRIPTION "Buck 2 Power Good"
-#define REGISTER_MODE_READ
-#define REGISTER_CMDS {0x200, 5, 0, 1}
-#include "REGISTER_MAKE.h"
-DEFECATE(PowerGoodBuck2)
-
-
-#include "REGISTER_RESET.h"
 #define REGISTER_DESCRIPTION "1V5 Power Good"
 #define REGISTER_MODE_READ
-#define REGISTER_CMDS {0x200, 6, 0, 1}
+#define REGISTER_CMDS {0x104, 6, 0, 1}
 #include "REGISTER_MAKE.h"
 DEFECATE(PowerGood1V5)
 
 #include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "Buck 2 Power Good"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x104, 5, 0, 1}
+#include "REGISTER_MAKE.h"
+DEFECATE(PowerGoodBuck2)
+
+
+
+#include "REGISTER_RESET.h"
 #define REGISTER_DESCRIPTION "Buck 1 Reset Output (Active Low)"
 #define REGISTER_MODE_READ
-#define REGISTER_CMDS {0x200, 4, 0, 1}
+#define REGISTER_CMDS {0x104, 4, 0, 1}
 #include "REGISTER_MAKE.h"
 DEFECATE(ResetOutputBuck1)
 
@@ -75,7 +77,7 @@ DEFECATE(ResetOutputBuck1)
 #include "REGISTER_RESET.h"
 #define REGISTER_DESCRIPTION "Buck 1 Power Good"
 #define REGISTER_MODE_READ
-#define REGISTER_CMDS {0x200, 3, 0, 1}
+#define REGISTER_CMDS {0x104, 3, 0, 1}
 #include "REGISTER_MAKE.h"
 DEFECATE(PowerGoodBuck1)
 
@@ -83,7 +85,7 @@ DEFECATE(PowerGoodBuck1)
 #include "REGISTER_RESET.h"
 #define REGISTER_DESCRIPTION "Step Down Power Good"
 #define REGISTER_MODE_READ
-#define REGISTER_CMDS {0x200, 2, 0, 1}
+#define REGISTER_CMDS {0x104, 2, 0, 1}
 #include "REGISTER_MAKE.h"
 DEFECATE(PowerGoodStepDown)
 
@@ -91,16 +93,67 @@ DEFECATE(PowerGoodStepDown)
 #include "REGISTER_RESET.h"
 #define REGISTER_DESCRIPTION "Buck 1 IRQ"
 #define REGISTER_MODE_READ
-#define REGISTER_CMDS {0x200, 1, 0, 1}
+#define REGISTER_CMDS {0x104, 1, 0, 1}
 #include "REGISTER_MAKE.h"
 DEFECATE(IRQBuck1)
 
 #include "REGISTER_RESET.h"
 #define REGISTER_DESCRIPTION "Hot Swap Controller Power In Alert (Active Low)"
 #define REGISTER_MODE_READ
-#define REGISTER_CMDS {0x200, 0, 0, 1}
+#define REGISTER_CMDS {0x104, 0, 0, 1}
 #include "REGISTER_MAKE.h"
 DEFECATE(HSwapCtrlPowerinAlert)
+
+
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "House Keeping Fan Register"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x108, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(HKFanReg)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "Fan A alert bit"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x108, 0, 0, 1}
+#include "REGISTER_MAKE.h"
+DEFECATE(FanAAlert)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "Fan B alert bit"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x108, 1, 0, 1}
+#include "REGISTER_MAKE.h"
+DEFECATE(FanBAlert)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "TPM A alert bit"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x108, 2, 0, 1}
+#include "REGISTER_MAKE.h"
+DEFECATE(TPMAAlert)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "TPM B alert bit"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x108, 3, 0, 1}
+#include "REGISTER_MAKE.h"
+DEFECATE(TPMBAlert)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "TPM Fan B alert bit"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x108, 4, 0, 1}
+#include "REGISTER_MAKE.h"
+DEFECATE(TPMFanAlert)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "House Keeping Flash Register"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x10C, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(HKFlashReg)
 
 #include "REGISTER_RESET.h"
 #define REGISTER_DESCRIPTION "MCU Reset Status"
@@ -129,8 +182,8 @@ DEFECATE(McuPollingTime)
 #define REGISTER(__name__) register_ ## __name__
 static const Register * SKA_MNG_HKREGS_registers[] = {
 	//static const Registers registers = {
-	&(REGISTER(BackplanePresent)),
 	&(REGISTER(TPMsPresent)),
+	&(REGISTER(PPSMux)),
 	&(REGISTER(HKTempReg)),
 	&(REGISTER(TempAlarm2)),
 	&(REGISTER(TempAlarm1)),
@@ -142,6 +195,14 @@ static const Register * SKA_MNG_HKREGS_registers[] = {
 	&(REGISTER(PowerGoodStepDown)),
 	&(REGISTER(IRQBuck1)),
 	&(REGISTER(HSwapCtrlPowerinAlert)),
+
+	&(REGISTER(HKFanReg)),
+	&(REGISTER(FanAAlert)),
+	&(REGISTER(FanBAlert)),
+	&(REGISTER(TPMAAlert)),
+	&(REGISTER(TPMBAlert)),
+	&(REGISTER(TPMFanAlert)),
+
 	&(REGISTER(McuResetStatus)),
 	&(REGISTER(McuPollingTime)),
 	NULL
@@ -151,8 +212,8 @@ static const Register * SKA_MNG_HKREGS_registers[] = {
 #ifdef REGISTER_MAKE_SYSFS
 #define REGISTER(__name__) register_dev_attr_ ## __name__.dev_attr.attr
 static struct attribute* SKA_MNG_HKREGS_attributes[] = {
-		&(REGISTER(BackplanePresent)),
 		&(REGISTER(TPMsPresent)),
+		&(REGISTER(PPSMux)),
 		&(REGISTER(HKTempReg)),
 		&(REGISTER(TempAlarm2)),
 		&(REGISTER(TempAlarm1)),
@@ -164,6 +225,16 @@ static struct attribute* SKA_MNG_HKREGS_attributes[] = {
 		&(REGISTER(PowerGoodStepDown)),
 		&(REGISTER(IRQBuck1)),
 		&(REGISTER(HSwapCtrlPowerinAlert)),
+
+		&(REGISTER(HKFanReg)),
+		&(REGISTER(FanAAlert)),
+		&(REGISTER(FanBAlert)),
+		&(REGISTER(TPMAAlert)),
+		&(REGISTER(TPMBAlert)),
+		&(REGISTER(TPMFanAlert)),
+
+
+
 		&(REGISTER(McuResetStatus)),
 		&(REGISTER(McuPollingTime)),
 	NULL

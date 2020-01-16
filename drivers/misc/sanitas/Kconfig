@@ -46,6 +46,13 @@ config SANITAS_SKA_MNG_ETHREGS
 	  drivers must be individually configured.
 
 
+config SANITAS_SKA_MNG_LOCKREGS
+	tristate "Sanitas SKA Management LOCK Registers driver"
+	depends on IMX_WEIM
+	help
+	  This enables the Sanitas SKA Management LOCK Registers driver. Individual devices
+	  drivers must be individually configured.
+
 config SANITAS_SKA_MNG_HKREGS
 	tristate "Sanitas SKA Management House Keeping Registers driver"
 	depends on IMX_WEIM
