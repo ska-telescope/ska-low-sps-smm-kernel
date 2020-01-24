@@ -815,6 +815,13 @@ DEFECATE(FAN3_TACH)
 #include "REGISTER_MAKE.h"
 DEFECATE(FAN4_TACH)
 
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "TPM SUPPLY STATUS"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x370, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(TPM_SUPPLY_STATUS)
+
 
 
 #ifdef REGISTER_MAKE_REGISTERS
@@ -926,6 +933,7 @@ static const Register * SKA_MNG_FRAMREGS_registers[] = {
 	&(REGISTER(FAN2_TACH)),
 	&(REGISTER(FAN3_TACH)),
 	&(REGISTER(FAN4_TACH)),
+	&(REGISTER(TPM_SUPPLY_STATUS)),
 	NULL
 };
 #undef REGISTER
@@ -1038,6 +1046,7 @@ static struct attribute* SKA_MNG_FRAMREGS_attributes[] = {
 		&(REGISTER(FAN2_TACH)),
 		&(REGISTER(FAN3_TACH)),
 		&(REGISTER(FAN4_TACH)),
+		&(REGISTER(TPM_SUPPLY_STATUS)),
 		NULL
 };
 static const struct attribute_group SKA_MNG_FRAMREGS_sysfs_group = {
