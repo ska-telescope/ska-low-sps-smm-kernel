@@ -134,6 +134,16 @@
 	};
 
 
+	
+	fpgaspi: fpgaspi@08000800  {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		compatible = "sanitas,inventami-spi";
+		reg = <0x8000800 0x100>;
+		bufferbase = <0x08080000>;
+		status = "okay";
+	};
+
 	skamngfpga1: skamngfpga@08000000 {
 	   compatible = "sanitas,ska-mng-fpga";
 	   reg = <0x08000000 0x10>;
@@ -493,4 +503,16 @@
 	/*};*/
 };
 
-
+&fpgaspi{
+	sanitas,spi-num-chipselects = <1>;
+	status = "okay";
+	
+	CPLDFlash: m25p32@3 {
+        #address-cells = <1>;
+        #size-cells = <1>;
+        compatible = "micron,m25px32";
+        spi-max-frequency = <20000000>;
+        reg = <3>;
+        sanitas,slaveid = <0x00000102>; 
+    };
+};
