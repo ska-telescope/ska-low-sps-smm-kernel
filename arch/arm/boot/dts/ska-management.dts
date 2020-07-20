@@ -507,12 +507,12 @@
 	sanitas,spi-num-chipselects = <1>;
 	status = "okay";
 	
-	CPLDFlash: m25p32@3 {
-        #address-cells = <1>;
-        #size-cells = <1>;
-        compatible = "micron,m25px32";
-        spi-max-frequency = <20000000>;
-        reg = <3>;
-        sanitas,slaveid = <0x00000102>; 
-    };
+	flashFPGA: m25p80@0 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "st,m25p32";
+		spi-max-frequency = <20000000>;
+		reg = <0>;
+		sanitas,slaveid = <0x00000000>; 
+	};
 };

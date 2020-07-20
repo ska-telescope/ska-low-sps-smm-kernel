@@ -88,8 +88,13 @@ static ssize_t storeRegister(struct device *dev, struct device_attribute *attr, 
 	struct platform_device *pdev = dev_get_platdata(dev);
 	struct SKA_MNG_MCUREGS_deviceData *data = dev_get_drvdata(dev);
 
-	//err = kstrtoint(buf, 0, &val);
-	err = kstrtol(buf, 0, (long*)&val);
+
+	//printk("Store Register MCUREGS called\n");
+	//printk("Register properties:\n %d\n %s\n %x\n %x\n %x\n %d\n %s \n",
+	//		reg->type,reg->label,reg->initializeWith,reg->min,reg->max,reg->flags,reg->description);
+
+	err = kstrtou32(buf, 0, &val);
+	//err = kstrtol(buf, 0, (long*)&val);
 	if (err)
 		return err;
 

@@ -89,7 +89,8 @@ static ssize_t storeRegister(struct device *dev, struct device_attribute *attr, 
 	struct SKA_MNG_HKREGS_deviceData *data = dev_get_drvdata(dev);
 
 	//err = kstrtoint(buf, 0, &val);
-	err = kstrtol(buf, 0, (long*)&val);
+	//err = kstrtol(buf, 0, (long*)&val);
+	err = kstrtou32(buf, 0, &val);
 	if (err)
 		return err;
 

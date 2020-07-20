@@ -88,7 +88,8 @@ static ssize_t storeRegister(struct device *dev, struct device_attribute *attr, 
 	struct platform_device *pdev = dev_get_platdata(dev);
 	struct SKA_MNG_FPGA_deviceData *data = dev_get_drvdata(dev);
 
-	err = kstrtol(buf, 10, (long*)&val);
+	//err = kstrtol(buf, 10, (long*)&val);
+	err = kstrtou32(buf, 0, &val);
 	if (err)
 		return err;
 

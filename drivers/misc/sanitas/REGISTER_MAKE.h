@@ -85,11 +85,13 @@
   #if defined(REGISTER_SIGNED)
 	#define REGISTER_TYPE REGISTERTYPE_SIGNED
 	#ifndef __KERNEL__  
-		#define REGISTER_MIN_ (uint32_t) std::numeric_limits<int32_t>::min()
-		#define REGISTER_MAX_ (uint32_t) std::numeric_limits<int32_t>::max()
+		#define REGISTER_MIN_ (uint32_t) std::numeric_limits<uint32_t>::min()
+		#define REGISTER_MAX_ (uint32_t) std::numeric_limits<uint32_t>::max()
 	#else
-		#define REGISTER_MIN_ (-2147483647-1)
-		#define REGISTER_MAX_ (2147483647)
+		/*#define REGISTER_MIN_ (-2147483647-1)*/
+		/*#define REGISTER_MAX_ (2147483647)*/
+	  #define REGISTER_MIN_ (0U)
+	  #define REGISTER_MAX_ (4294967295U)
 	#endif
   #elif defined(REGISTER_FLOAT)
 	#define REGISTER_TYPE REGISTERTYPE_FLOAT
