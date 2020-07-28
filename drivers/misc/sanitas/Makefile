@@ -18,5 +18,7 @@ sanitas_ska_mng_framregs-objs := sanitas__ska_mng_framregs.o
 obj-$(CONFIG_SANITAS_SKA_MNG_FRAMREGS) += sanitas_ska_mng_framregs.o
 sanitas_ska_mng_mdio-objs := sanitas__ska_mng_mdio.o
 obj-$(CONFIG_SANITAS_SKA_MNG_MDIO) += sanitas_ska_mng_mdio.o
+sanitas_ska_mng_fpga_spi-objs := sanitas__ska_mng_fpga_spi.o
+obj-$(CONFIG_SANITAS_SKA_MNG_FPGA_SPI) += sanitas_ska_mng_fpga_spi.o
 sanitas_ska_mng_fpga_i2c-objs := sanitas__ska_mng_fpga_i2c.o
 obj-$(CONFIG_SANITAS_SKA_MNG_FPGA_I2C) += sanitas_ska_mng_fpga_i2c.o

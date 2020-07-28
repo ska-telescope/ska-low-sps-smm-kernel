@@ -143,6 +143,12 @@
 		bufferbase = <0x08080000>;
 		status = "okay";
 	};
+	
+	skamngfpgaspi: skamngfpgaspi@08000800{
+    compatible = "sanitas,ska-mng-fpga-spi";
+    reg = <0x08010000 0x100>;
+    status = "okay";     
+    };
 
 	skamngfpga1: skamngfpga@08000000 {
 	   compatible = "sanitas,ska-mng-fpga";
