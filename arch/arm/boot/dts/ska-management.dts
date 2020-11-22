@@ -144,61 +144,78 @@
 		status = "okay";
 	};
 	
+	/*
 	skamngfpgaspi: skamngfpgaspi@08000800{
     compatible = "sanitas,ska-mng-fpga-spi";
-    reg = <0x08010000 0x100>;
+    reg = <0x08000800 0x100>;
     status = "okay";     
     };
-
+	*/
 	skamngfpga1: skamngfpga@08000000 {
 	   compatible = "sanitas,ska-mng-fpga";
 	   reg = <0x08000000 0x10>;
 	   status = "okay";
 	};
+  
+    skamngethregs: skamngethregs@08000100 {
+    compatible = "sanitas,ska-mng-ethregs";
+    reg = <0x08000100 0x204>;
+    status = "okay";     
+    };
 	
     skamngled: skamngled@08000400 {
     compatible = "sanitas,ska-mng-led";
     reg = <0x08000400 0x10>;
     status = "okay";     
     };
+    
+    skamnghkregs: skamnghkregs@08000500 {
+    compatible = "sanitas,ska-mng-hkregs";
+    /*reg = <0x08000500 0x40c>;*/
+    reg = <0x08000500 0x200>;
+    status = "okay";     
+    };
+	
+	skamngctrlregs: skamngctrlregs@08000900 {
+    compatible = "sanitas,ska-mng-ctrlregs";
+    reg = <0x08000900 0x200>;
+    status = "okay";     
+    };
 	
     skamnguserreg: skamnguserreg@08000a00 {
     compatible = "sanitas,ska-mng-userreg";
-    reg = <0x08000a00 0x10>;
+    reg = <0x08000f00 0x10>;
     status = "okay";     
     };
 
+	/*
     skamngonewireregs: skamngmonewireregs@080B0000 {
     compatible = "sanitas,ska-mng-onewireregs";
     reg = <0x080B0000 0x18>;
     status = "okay";     
     };
-
+	*/
+	
     skamngmcuregs: skamngmcuregs@08030000 {
     compatible = "sanitas,ska-mng-mcuregs";
     reg = <0x08030000 0x304>;
     status = "okay";     
     };
     
-    skamnghkregs: skamnghkregs@08000500 {
-    compatible = "sanitas,ska-mng-hkregs";
-    reg = <0x08000500 0x40c>;
+
+    skamngcplduartregs: skamngcplduartregs@08030000 {
+    compatible = "sanitas,ska-mng-cplduartregs";
+    reg = <0x08070000 0x10>;
     status = "okay";     
     };
-    
-    skamngethregs: skamngethregs@08000100 {
-    compatible = "sanitas,ska-mng-ethregs";
-    reg = <0x08000100 0x204>;
-    status = "okay";     
-    };
+
     
     skamnglockregs: skamnglockregs@080C0000  {
     compatible = "sanitas,ska-mng-lockregs";
     reg = <0x080C0000 0x8>;
     status = "okay";     
     };
-    
-    
+      
 
     skamngframregs: skamngframregs@08090000 {
     compatible = "sanitas,ska-mng-framregs";
@@ -513,7 +530,7 @@
 	sanitas,spi-num-chipselects = <1>;
 	status = "okay";
 	
-	flashFPGA: m25p80@0 {
+	flashFPGA: m25p32@0 {
 		#address-cells = <1>;
 		#size-cells = <1>;
 		compatible = "st,m25p32";

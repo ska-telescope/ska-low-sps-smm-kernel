@@ -138,15 +138,15 @@ _spi_sanitas_dump(
 	return;
 
 	printk(KERN_WARNING  "\n");
-	u16 tmp0 = __raw_readw(spi_sanitas->base + 0x00);
-	u16 tmp4 = __raw_readw(spi_sanitas->base + 0x04);
-	u16 tmp8 = __raw_readw(spi_sanitas->base + 0x08);
-	u16 tmpc = __raw_readw(spi_sanitas->base + 0x0c);
+	u32 tmp0 = __raw_readl(spi_sanitas->base + 0x00);
+	u32 tmp4 = __raw_readl(spi_sanitas->base + 0x04);
+	u32 tmp8 = __raw_readl(spi_sanitas->base + 0x08);
+	u32 tmpc = __raw_readl(spi_sanitas->base + 0x0c);
 
-	u16 tmp10 = __raw_readw(spi_sanitas->base + 0x10);
-	u16 tmp14 = __raw_readw(spi_sanitas->base + 0x14);
-	u16 tmp18 = __raw_readw(spi_sanitas->base + 0x18);
-	u16 tmp1c = __raw_readw(spi_sanitas->base + 0x1C);
+	u32 tmp10 = __raw_readl(spi_sanitas->base + 0x10);
+	u32 tmp14 = __raw_readl(spi_sanitas->base + 0x14);
+	u32 tmp18 = __raw_readl(spi_sanitas->base + 0x18);
+	u32 tmp1c = __raw_readl(spi_sanitas->base + 0x1C);
 
 	printk(KERN_WARNING  "%04X %04X %04X %04X %04X %04X %04X %04X\n", tmp0, tmp4, tmp8, tmpc, tmp10, tmp14, tmp18, tmp1c);
 }
@@ -207,8 +207,7 @@ inventami_spi_reset(
 ) {
 	//printk(KERN_WARNING "inventami_spi_reset\n");
 	spi_sanitas_dump(spi_sanitas);
-	__raw_writew(0x00000000, spi_sanitas->base + INVENTAMI_SPI_FIFO_PTR_ADD);
-	__raw_writew(0x00000000, spi_sanitas->base + INVENTAMI_SPI_FIFO_PTR_ADD + 2);
+	__raw_writel(0x00000000, spi_sanitas->base + INVENTAMI_SPI_FIFO_PTR_ADD);
 	spi_sanitas_dump(spi_sanitas);
 }
 
@@ -224,10 +223,10 @@ static void __maybe_unused
 inventami_spi_trigger(
 	struct spi_sanitas_data* spi_sanitas
 ) {
-	// printk(KERN_WARNING  "inventami_spi_trigger (txfifo = %d, length = %d)\n", spi_sanitas->txfifo, spi_sanitas->length);
+	printk(KERN_WARNING  "inventami_spi_trigger (txfifo = %d, length = %d)\n", spi_sanitas->txfifo, spi_sanitas->length);
 
 	spi_sanitas_dump(spi_sanitas);
-	__raw_writew(spi_sanitas->length, spi_sanitas->base + INVENTAMI_SPI_CMD_TX_ADD);
+	__raw_writel(spi_sanitas->length, spi_sanitas->base + INVENTAMI_SPI_CMD_TX_ADD);
 	spi_sanitas_dump(spi_sanitas);
 }
 
@@ -236,13 +235,13 @@ inventami_spi_config(
 	struct spi_sanitas_data*   spi_sanitas,
 	struct spi_sanitas_config* config
 ) {
-//	printk(KERN_WARNING  "inventami_spi_config cs = %02X\n", config->cs);
+	printk(KERN_WARNING  "inventami_spi_config cs = %02X\n", config->cs);
 	spi_sanitas_dump(spi_sanitas);
 
 	u32 slaveId = spi_sanitas->slaveIds[config->cs];
 
 	if(slaveId == 0xFFFFFFFF) {
-		// printk(KERN_ERR "SlaveID for CS %d is invalid\n", config->cs);
+		 printk(KERN_ERR "SlaveID for CS %d is invalid\n", config->cs);
 		return -EINVAL;
 	}
 
@@ -251,7 +250,7 @@ inventami_spi_config(
 	//slaveId >>= 8;
 	slaveId &= 0x000000FF;
 
-	// printk(KERN_WARNING "inventami_spi_config slaveId = %02X\n", slaveId);
+	printk(KERN_WARNING "inventami_spi_config slaveId = %02X\n", slaveId);
 
 	__raw_writew((u16)slaveId, spi_sanitas->base + INVENTAMI_SPI_CHIP_SELECTS_ADD);
 	spi_sanitas_dump(spi_sanitas);
@@ -265,7 +264,7 @@ inventami_spi_rx_available(
 ) {
 	// printk(KERN_WARNING  "inventami_spi_rx_available: ");
 	spi_sanitas_dump(spi_sanitas);
-	u16 tmp = __raw_readw(spi_sanitas->base + INVENTAMI_SPI_CMD_RX_ADD);
+	u32 tmp = __raw_readl(spi_sanitas->base + INVENTAMI_SPI_CMD_RX_ADD);
 
 	// printk(KERN_WARNING  "%d\n", tmp);
 
@@ -277,7 +276,7 @@ inventami_spi_tx_remaining(
 	struct spi_sanitas_data* spi_sanitas
 ) {
 	spi_sanitas_dump(spi_sanitas);
-	u16 tmp = __raw_readw(spi_sanitas->base + INVENTAMI_SPI_CMD_RX_ADD);
+	u32 tmp = __raw_readl(spi_sanitas->base + INVENTAMI_SPI_CMD_RX_ADD);
 
 	//printk(KERN_WARNING  "inventami_spi_tx_remaining: %d\n", tmp);
 
@@ -315,32 +314,33 @@ spi_sanitas_chipselect(
 	struct spi_device* spi,
 	int                is_active
 ) {
-	//printk(KERN_WARNING "spi_sanitas_chipselect (%d is_active = %d)\n", spi->chip_select, is_active);
+	printk(KERN_WARNING "spi_sanitas_chipselect (%d is_active = %d)\n", spi->chip_select, is_active);
 
 	struct spi_sanitas_data* spi_sanitas = spi_master_get_devdata(spi->master);
 //	int active = is_active != BITBANG_CS_INACTIVE;
 //	int dev_is_lowactive = !(spi->mode & SPI_CS_HIGH);
 
-	u16 flag = __raw_readw(spi_sanitas->base + INVENTAMI_SPI_FLAGS_STATIC_CS);
-	u16 mask = 0x0001 << INVENTAMI_SPI_FLAGS_STATIC_CS_OFF;
+	u32 flag = __raw_readl(spi_sanitas->base + INVENTAMI_SPI_CS_OW_ADD);
+	u32 mask = 0x0001 << INVENTAMI_SPI_CS_OW_CS_OFF;
 
 //	if(dev_is_lowactive ^ active) {
-	if(is_active) {
-		flag &= ~mask;
-	} else {
-		flag |= mask;
-	}
+	//if(is_active) {
+	//	flag &= ~mask;
+	//} else {
+	//	flag |= mask;
+	//}
+	flag =0x00010001;
 
-	__raw_writew(flag, spi_sanitas->base + INVENTAMI_SPI_FLAGS_STATIC_CS);
+	__raw_writel(flag, spi_sanitas->base + INVENTAMI_SPI_CS_OW_ADD);
 }
 
 static void spi_sanitas_push(
 	struct spi_sanitas_data* spi_sanitas
 ) {
-	// printk(KERN_WARNING "spi_sanitas_push count=%d txfifo=%d\n", spi_sanitas->count, spi_sanitas->txfifo);
+	printk(KERN_WARNING "spi_sanitas_push count=%d txfifo=%d\n", spi_sanitas->count, spi_sanitas->txfifo);
 
 	while (spi_sanitas->txfifo < (spi_sanitas_get_tx_fifosize(spi_sanitas) / 2)) {
-		// printk(KERN_WARNING "--> count=%d txfifo=%d\n", spi_sanitas->count, spi_sanitas->txfifo);
+		printk(KERN_WARNING "--> count=%d txfifo=%d\n", spi_sanitas->count, spi_sanitas->txfifo);
 		if (!spi_sanitas->count) {
 			break;
 		}
@@ -355,7 +355,7 @@ static void spi_sanitas_push(
 static void spi_sanitas_pull(
 	struct spi_sanitas_data* spi_sanitas)
 {
-	// printk(KERN_WARNING "spi_sanitas_pull\n");
+	printk(KERN_WARNING "spi_sanitas_pull\n");
 
 	//spi_sanitas->devtype_data->reset(spi_sanitas);
 
@@ -406,7 +406,7 @@ spi_sanitas_setupxfer(
 	struct spi_device*   spi,
 	struct spi_transfer* transfer
 ) {
-//	printk(KERN_WARNING "spi_sanitas_setupxfer\n");
+	printk(KERN_WARNING "spi_sanitas_setupxfer\n");
 
 	struct spi_sanitas_data*  spi_sanitas = spi_master_get_devdata(spi->master);
 	struct spi_sanitas_config config;
@@ -448,7 +448,7 @@ spi_sanitas_transfer(
 	struct spi_device*   spi,
 	struct spi_transfer* transfer
 ) {
-	//printk(KERN_WARNING "spi_sanitas_transfer\n");
+	printk(KERN_WARNING "spi_sanitas_transfer\n");
 
 	struct spi_sanitas_data* spi_sanitas = spi_master_get_devdata(spi->master);
 
@@ -711,8 +711,8 @@ spi_sanitas_probe(
 		goto out_master_put;
 	}
 
-	spi_sanitas->txFifoSize =  __raw_readw(spi_sanitas->base + INVENTAMI_SPI_TXFIFO_SIZE_ADD);
-	spi_sanitas->rxFifoSize =  __raw_readw(spi_sanitas->base + INVENTAMI_SPI_RXFIFO_SIZE_ADD);
+	spi_sanitas->txFifoSize =  __raw_readl(spi_sanitas->base + INVENTAMI_SPI_TXFIFO_SIZE_ADD);
+	spi_sanitas->rxFifoSize =  __raw_readl(spi_sanitas->base + INVENTAMI_SPI_RXFIFO_SIZE_ADD);
 	dev_info(&pdev->dev, "FIFO Sizes: tx = %d, rx = %d\n", spi_sanitas->txFifoSize, spi_sanitas->rxFifoSize);
 
 
@@ -726,7 +726,7 @@ spi_sanitas_probe(
 
 	spi_sanitas->bufferBase = devm_ioremap(&pdev->dev, tmp, 0xFFFF); //64KB
 
-	// dev_info(&pdev->dev, "BufferBase = %08x -> %08x\n", tmp, spi_sanitas->bufferBase);
+	dev_info(&pdev->dev, "BufferBase = %08x -> %08x\n", tmp, spi_sanitas->bufferBase);
 
 	if (IS_ERR(spi_sanitas->bufferBase)) {
 		ret = PTR_ERR(spi_sanitas->bufferBase);
@@ -744,11 +744,11 @@ spi_sanitas_probe(
 		}
 	}
 
-	u32 tmp2 = 0x08000800;
+	u32 tmp2 = 0x08000b00;
 
 	spi_sanitas->scrap = devm_ioremap(&pdev->dev, tmp2, 0xFFFF); //64KB
 
-	// dev_info(&pdev->dev, "Scrap = %08x -> %08x\n", tmp2, spi_sanitas->scrap);
+	dev_info(&pdev->dev, "Scrap = %08x -> %08x\n", tmp2, spi_sanitas->scrap);
 
 	if (IS_ERR(spi_sanitas->scrap)) {
 		ret = PTR_ERR(spi_sanitas->scrap);

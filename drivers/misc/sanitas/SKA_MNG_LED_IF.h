@@ -2,6 +2,10 @@
 #define SKA_MNG_LED_REGISTERS_H_
 
 #include "register_map.h"
+/*
+		<node id="leduser_k"           		address="0x0400"    mask="0x0000000f" permission="rw"   hw_permission= "w"											description="USER LED K"/>
+		<node id="leduser_a"           		address="0x0404"    mask="0x0000000f" permission="rw"   hw_permission= "w"											description="USER LED A"/>
+*/
 
 #undef REGISTER_REG_NAME
 

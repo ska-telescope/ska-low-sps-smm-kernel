@@ -2,8 +2,15 @@
 #define SKA_MNG_LOCKREGS_REGISTERS_H_
 
 #include "register_map.h"
-
 #undef REGISTER_REG_NAME
+/*
+<node id="lock" address="0x000C0000" description="Peripheral Lock">
+		<node id="mlock0"      				address="0x0"   	mask="0xffffffff" permission="rw"  	hw_permission= "we" 	hw_rst="0xffffffff" 				description="MCU slave lock 0"/>
+		<node id="mlock1"      				address="0x4"   	mask="0xffffffff" permission="rw"  	hw_permission= "we" 	hw_rst="0xffffffff" 				description="UCP slave lock 1"/>
+		<node id="mlock2"      				address="0x8"   	mask="0xffffffff" permission="rw"  	hw_permission= "we" 	hw_rst="0xffffffff" 				description="CPU slave lock 2"/>
+	</node>
+*/
+
 
 #include "REGISTER_RESET.h"
 #define REGISTER_DESCRIPTION "MCU Lock Reg"
