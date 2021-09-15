@@ -182,7 +182,7 @@
     status = "okay";     
     };
 	
-    skamnguserreg: skamnguserreg@08000a00 {
+    skamnguserreg: skamnguserreg@08000f00 {
     compatible = "sanitas,ska-mng-userreg";
     reg = <0x08000f00 0x10>;
     status = "okay";     
