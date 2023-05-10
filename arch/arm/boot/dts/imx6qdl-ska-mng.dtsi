@@ -209,6 +209,17 @@
 		};
 	};
 
+
+	ska_switch {
+		pinctrl_switch_1: switch-1 {
+		fsl,pins = <
+			MX6QDL_PAD_KEY_COL1__ENET_MDIO        0x1b0b0
+			MX6QDL_PAD_KEY_COL2__ENET_MDC         0x1b0b0
+		
+		>;
+		};
+	};
+
 	esai {
 		pinctrl_esai_1: esaigrp-1 {
 			fsl,pins = <
@@ -607,11 +618,11 @@
 		pinctrl_uart2_3: uart2grp-3 { /* DTE mode */
 			fsl,pins = <
 				
-				MX6QDL_PAD_GPIO_8__UART2_RX_DATA 0x1b0b1
-				MX6QDL_PAD_GPIO_7__UART2_TX_DATA 0x1b0b1
-				MX6QDL_PAD_SD4_DAT6__UART2_CTS_B 0x1b0b1
+				MX6QDL_PAD_GPIO_8__UART2_RX_DATA 0x1b0b0
+				MX6QDL_PAD_GPIO_7__UART2_TX_DATA 0x1b0b0
+				/*MX6QDL_PAD_SD4_DAT6__UART2_CTS_B 0x1b0b1
 				MX6QDL_PAD_SD4_DAT5__UART2_RTS_B 0x1b0b1
-				
+				*/
 		
 				
 				

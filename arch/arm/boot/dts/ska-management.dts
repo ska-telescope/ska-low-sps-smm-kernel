@@ -229,6 +229,12 @@
     status = "okay";     
     };
 
+	skamngmdio: skamngmdio@08060000{
+    compatible = "sanitas,ska-mng-mdio";
+    reg = <0x08060000 0x10>;
+    status = "okay";     
+    };
+
 	
 };
 
@@ -269,7 +275,103 @@
 };
 
 
+/*
+&fec {
+	pinctrl-names = "default";
+	compatible = "fsl,imx6q-fec";
+	pinctrl-0 = <&pinctrl_enet_4>;
 
+	phy-mode = "rgmii-id";
+	status = "okay";
+
+	fixed-link {
+		speed = <1000>;
+		full-duplex;
+	};
+
+	mdio {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		status = "okay";
+
+		switch0: switch0@0 {
+			compatible = "marvell,mv88e6190";
+			pinctrl-names = "default";
+			pinctrl-0 = <&pinctrl_switch_1>;
+			reg = <0>;
+			dsa,member = <0 0>;
+			#reset-gpios = <&gpio1 29 GPIO_ACTIVE_HIGH>;
+
+			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				port@0 {
+					reg = <0>;
+					label = "cpu";
+					ethernet = <&fec>;
+					phy-mode = "rgmii-id";
+
+					fixed-link {
+						speed = <1000>;
+						full-duplex;
+					};
+                		};
+				port@1 {
+					reg = <1>;
+					label = "slot1";
+				};
+
+				port@2 {
+					reg = <2>;
+					label = "slot2";
+				};
+
+
+				port@3 {
+					reg = <3>;
+					label = "slot3";
+				};
+
+				port@4 {
+					reg = <4>;
+					label = "slot4";
+				};
+
+				port@5 {
+					reg = <5>;
+					label = "slot5";
+				};
+				port@6 {
+					reg = <6>;
+					label = "slot6";
+				};
+
+				port@7 {
+					reg = <7>;
+					label = "slot7";
+				};
+
+				port@8 {
+					reg = <8>;
+					label = "slot8";
+				};
+
+				port@9 {
+					reg = <9>;
+					label = "P2";
+				};
+
+				port@10 {
+					reg = <10>;
+					label = "Uplink-2to1";
+				};
+				
+			};
+		};
+	};
+};
+*/
 
 &hdmi_audio { /* ##OK */
 	status = "okay";

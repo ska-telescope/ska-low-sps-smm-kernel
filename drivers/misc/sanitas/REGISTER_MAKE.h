@@ -1,6 +1,9 @@
 #ifndef __KERNEL__
 #include <limits>
 
+#undef VERIFY_OCTAL_PERMISSIONS
+#define VERIFY_OCTAL_PERMISSIONS(perms) (perms)
+
 #ifdef min
   #undef min
 #endif

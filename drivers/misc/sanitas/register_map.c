@@ -257,10 +257,10 @@ void Register_SPIWrite16(Register_SPIBusOps16* ops, const Register* r, u32 in) {
  */
 
 int writeRawRegister32_memory(void* address, u32 value) {
-	printk(KERN_INFO "WriteRawRegister32_memory: %08x, %08x\n", address, value);
+	//printk(KERN_INFO "WriteRawRegister32_memory: %08x, %08x\n", address, value);
 
 	writel(value, address);
-	printk(KERN_INFO "Operation Complete\n");
+	//printk(KERN_INFO "Operation Complete\n");
 
 	return 0;
 }

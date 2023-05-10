@@ -939,6 +939,7 @@ static const Register * SKA_MNG_FRAMREGS_registers[] = {
 #undef REGISTER
 #endif // ifdef REGISTER_MAKE_REGISTERS
 #ifdef REGISTER_MAKE_SYSFS
+
 #define REGISTER(__name__) register_dev_attr_ ## __name__.dev_attr.attr
 static struct attribute* SKA_MNG_FRAMREGS_attributes[] = {
 		&(REGISTER(Adt1TempValue)),

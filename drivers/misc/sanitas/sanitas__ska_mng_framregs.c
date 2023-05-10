@@ -44,7 +44,8 @@
 #include <linux/io.h>
 
 #define DRIVER_NAME "ska_mng_framregs"
-
+#undef VERIFY_OCTAL_PERMISSIONS
+#define VERIFY_OCTAL_PERMISSIONS(perms) (perms)
 struct SKA_MNG_FRAMREGS_deviceData
 {
 	struct device *dev;
@@ -135,6 +136,7 @@ static const struct attribute_group SKA_MNG_FRAMREGS_sysfsControl_group = {
 		.name = "control",
 		.attrs = SKA_MNG_FRAMREGS_sysfsControl_attributes,
 };
+
 
 // ------------------------------------------------------------------------------------------------
 static int ska_mng_fram_reg_probe(
