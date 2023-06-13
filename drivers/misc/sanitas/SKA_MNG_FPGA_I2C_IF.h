@@ -52,7 +52,12 @@ DEFECATE(twi_wrdata)
 #include "REGISTER_MAKE.h"
 DEFECATE(twi_rdata)
 
-
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "Read boot sel eeprom byte Register"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x50, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(boot_sel)
 
 
 
@@ -66,6 +71,7 @@ static const Register * SKA_MNG_FPGA_I2C_registers[] = {
 	&(REGISTER(twi_irq_en)),	
 	&(REGISTER(twi_wrdata)),
 	&(REGISTER(twi_rdata)),
+	&(REGISTER(boot_sel)),
 	NULL
 };
 #undef REGISTER
@@ -79,6 +85,7 @@ static struct attribute* SKA_MNG_FPGA_I2C_attributes[] = {
 	&(REGISTER(twi_irq_en)),	
 	&(REGISTER(twi_wrdata)),
 	&(REGISTER(twi_rdata)),
+	&(REGISTER(boot_sel)),
 	NULL
 };
 static const struct attribute_group SKA_MNG_FPGA_I2C_sysfs_group = {

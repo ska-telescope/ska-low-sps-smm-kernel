@@ -87,8 +87,8 @@
 	leds {
 		compatible = "gpio-leds";
 
-		debug-led {
-			gpios = <&gpio5 11 0>;
+		heartbeat-led {
+			gpios = <&gpio5 5 0>;
 			linux,default-trigger = "heartbeat";
 		};
 
@@ -479,7 +479,7 @@
 				MX6QDL_PAD_GPIO_19__GPIO4_IO05			0x80000000 /* SPIWP */
 				MX6QDL_PAD_DI0_DISP_CLK__GPIO4_IO16		0x80000000 /* AUDIO_JACK */
 
-				MX6QDL_PAD_DISP0_DAT11__GPIO5_IO05		0x80000000 /* */
+				//MX6QDL_PAD_DISP0_DAT11__GPIO5_IO05		0x80000000 /* */
 				MX6QDL_PAD_DISP0_DAT12__GPIO5_IO06		0x80000000 /* */
 				MX6QDL_PAD_DISP0_DAT14__GPIO5_IO08		0x80000000 /* */
 				MX6QDL_PAD_DISP0_DAT15__GPIO5_IO09		0x80000000 /* */
