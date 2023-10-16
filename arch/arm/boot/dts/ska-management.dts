@@ -219,7 +219,7 @@
 
     skamngframregs: skamngframregs@08090000 {
     compatible = "sanitas,ska-mng-framregs";
-    reg = <0x08090000 0x36C>;
+    reg = <0x08090000 0x3b8>;
     status = "okay";     
     };
     

@@ -822,6 +822,107 @@ DEFECATE(FAN4_TACH)
 #include "REGISTER_MAKE.h"
 DEFECATE(TPM_SUPPLY_STATUS)
 
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "PSU0_status"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x384, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(PSU0_status)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "PSU0_temp1"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x388, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(PSU0_temp1)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "PSU0_temp2"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x38c, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(PSU0_temp2)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "PSU0_temp3"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x38c, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(PSU0_temp3)
+
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "PSU0_Pout"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x394, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(PSU0_Pout)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "PSU0_Pin"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x398, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(PSU0_Pin)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "PSU1_status"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x39c, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(PSU1_status)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "PSU1_temp1"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x3a0, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(PSU1_temp1)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "PSU1_temp2"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x3a4, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(PSU1_temp2)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "PSU1_temp3"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x3a8, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(PSU1_temp3)
+
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "PSU1_Pout"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x3ac, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(PSU1_Pout)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "PSU1_Pin"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x3b0, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(PSU1_Pin)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "PSU_ioexp_pre"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x3b4, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(PSU_ioexp_pre)
+
+#include "REGISTER_RESET.h"
+#define REGISTER_DESCRIPTION "PSU_ioexp_post"
+#define REGISTER_MODE_READ
+#define REGISTER_CMDS {0x3b8, 0, 0, 32}
+#include "REGISTER_MAKE.h"
+DEFECATE(PSU_ioexp_post)
+
+
 
 
 #ifdef REGISTER_MAKE_REGISTERS
@@ -934,6 +1035,20 @@ static const Register * SKA_MNG_FRAMREGS_registers[] = {
 	&(REGISTER(FAN3_TACH)),
 	&(REGISTER(FAN4_TACH)),
 	&(REGISTER(TPM_SUPPLY_STATUS)),
+	&(REGISTER(PSU0_status)),
+	&(REGISTER(PSU0_temp1)),
+	&(REGISTER(PSU0_temp2)),
+	&(REGISTER(PSU0_temp3)),
+	&(REGISTER(PSU0_Pout)),
+	&(REGISTER(PSU0_Pin)),
+	&(REGISTER(PSU1_status)),
+	&(REGISTER(PSU1_temp1)),
+	&(REGISTER(PSU1_temp2)),
+	&(REGISTER(PSU1_temp3)),
+	&(REGISTER(PSU1_Pout)),
+	&(REGISTER(PSU1_Pin)),
+	&(REGISTER(PSU_ioexp_pre)),
+	&(REGISTER(PSU_ioexp_post)),
 	NULL
 };
 #undef REGISTER
@@ -1048,6 +1163,20 @@ static struct attribute* SKA_MNG_FRAMREGS_attributes[] = {
 		&(REGISTER(FAN3_TACH)),
 		&(REGISTER(FAN4_TACH)),
 		&(REGISTER(TPM_SUPPLY_STATUS)),
+		&(REGISTER(PSU0_status)),
+		&(REGISTER(PSU0_temp1)),
+		&(REGISTER(PSU0_temp2)),
+		&(REGISTER(PSU0_temp3)),
+		&(REGISTER(PSU0_Pout)),
+		&(REGISTER(PSU0_Pin)),
+		&(REGISTER(PSU1_status)),
+		&(REGISTER(PSU1_temp1)),
+		&(REGISTER(PSU1_temp2)),
+		&(REGISTER(PSU1_temp3)),
+		&(REGISTER(PSU1_Pout)),
+		&(REGISTER(PSU1_Pin)),
+		&(REGISTER(PSU_ioexp_pre)),
+		&(REGISTER(PSU_ioexp_post)),
 		NULL
 };
 static const struct attribute_group SKA_MNG_FRAMREGS_sysfs_group = {
